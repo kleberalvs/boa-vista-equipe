@@ -36,7 +36,7 @@ function applyBrand() {
   const lg0 = $('#login img'); if (lg0) { lg0.src = b.logo || 'assets/logo.png'; lg0.className = b.logo ? 'custom' : 'def'; }
 }
 const heroData = () => new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-const hero = () => `<section class="hero"><div class="cover"><button class="b s cam" onclick="menuImagem('capa')">${ICO.cam}<span>${brand().cover ? 'Alterar capa' : 'Adicionar capa'}</span></button></div><div class="hrow"><div class="avw"><div class="avatar"><img alt=""></div><button class="b s ic cam2" onclick="menuImagem('logo')" aria-label="Trocar imagem da empresa" title="Trocar imagem da empresa">${ICO.cam}</button></div><div class="hinfo"><h1>Boa Vista Corporate</h1><p class="sub" style="margin:4px 0 0">${heroData()}</p></div></div></section>`;
+const hero = () => `<section class="hero"><div class="cover"><button class="b s cam" onclick="menuImagem('capa')">${ICO.cam}<span>${brand().cover ? 'Alterar capa' : 'Adicionar capa'}</span></button></div><div class="hrow"><div class="avw"><div class="avatar"><img alt=""></div><button class="b s ic cam2" onclick="menuImagem('logo')" aria-label="Trocar imagem da empresa" title="Trocar imagem da empresa">${ICO.cam}</button></div><div class="hinfo"><p class="sub" style="margin:0">${heroData()}</p></div></div></section>`;
 
 function lerImagem(file, max, lim) {
   return new Promise((res, rej) => {
