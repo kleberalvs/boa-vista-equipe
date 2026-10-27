@@ -94,7 +94,7 @@ Mensalmente: Consolidação e emissão do relatório de atividades executadas; l
 - **Comunicação e Atendimento:** Cordialidade, clareza e empatia no trato com o público do coworking e colaboradores.
 - **Comprometimento:** Respeito estrito a prazos, normas de segurança e processos homologados.
 - **Mindset de Aprendizado:** Interesse genuíno em desenvolvimento profissional e novas tecnologias.`},
-fin:{n:'Analista Administrativo Financeiro Pleno',t:`dep: Administração
+fin:{n:'Gestor Administrativo Financeiro',t:`dep: Administração
 rep: Gestão > Direção
 #OBJETIVO DO CARGO
 Assegurar a gestão administrativa, financeira e de pessoal do Boa Vista Corporate, garantindo a regularidade dos pagamentos, recebimentos, contratos e obrigações legais, o bom relacionamento com fornecedores e clientes e a organização das rotinas que sustentam a operação do coworking.

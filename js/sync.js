@@ -3,7 +3,7 @@
    Cada aparelho envia só o que mudou e recebe só o que os outros mudaram. Em conflito, vale a última gravação. */
 const CFG = window.BVC_CFG || {};
 const CLOUD = !!(CFG.url && CFG.key && window.supabase);
-const APPV = '2026.10.27-1';
+const APPV = '2026.10.27-2';
 let SB = null, SES = null, synced = {}, pushing = false, again = false, tmr = null, chan = null, DEF = null;
 try { synced = JSON.parse(localStorage.getItem('bvc_synced') || '{}'); } catch (e) { synced = {}; }
 const persistSynced = () => { try { localStorage.setItem('bvc_synced', JSON.stringify(synced)); } catch (e) {} };
@@ -14,7 +14,7 @@ function cj(o) {
   if (Array.isArray(o)) return '[' + o.map(cj).join(',') + ']';
   return '{' + Object.keys(o).filter(k => o[k] !== undefined).sort().map(k => JSON.stringify(k) + ':' + cj(o[k])).join(',') + '}';
 }
-const cfgRec = () => ({ amb: db.amb, cg: db.cg || {}, v: db.v || 0, m3: db.m3 || 0 });
+const cfgRec = () => ({ amb: db.amb, cg: db.cg || {}, v: db.v || 0, m3: db.m3 || 0, m4: db.m4 || 0 });
 function recs() {
   const m = {};
   db.p.forEach(p => m['p:' + p.id] = p);
@@ -22,11 +22,12 @@ function recs() {
   db.n.i.forEach(i => m['i:' + i.id] = i);
   (db.log || []).forEach(e => m['l:' + e.id] = e);
   m['c:cfg'] = cfgRec();
+  m['b:brand'] = db.brand || {};
   return m;
 }
 function getRec(k) {
   const id = k.slice(2), f = a => (a || []).find(x => x.id == id);
-  switch (k[0]) { case 'p': return f(db.p); case 'f': return f(db.n.f); case 'i': return f(db.n.i); case 'l': return f(db.log); case 'c': return cfgRec(); }
+  switch (k[0]) { case 'p': return f(db.p); case 'f': return f(db.n.f); case 'i': return f(db.n.i); case 'l': return f(db.log); case 'c': return cfgRec(); case 'b': return db.brand || {}; }
 }
 const fsort = (a, b) => a.id == 'geral' ? -1 : b.id == 'geral' ? 1 : (a.t || 0) - (b.t || 0);
 function put(arr, x) { const o = arr.find(q => q.id == x.id); if (o) { Object.keys(o).forEach(k => delete o[k]); Object.assign(o, x); } else arr.push(x); }
@@ -35,7 +36,8 @@ function place(d, kind, x) {
   else if (kind == 'f') { put(d.n.f, x); d.n.f.sort(fsort); }
   else if (kind == 'i') put(d.n.i, x);
   else if (kind == 'l') { put(d.log, x); d.log.sort((a, b) => a.t - b.t); }
-  else if (kind == 'c') { d.amb = x.amb || []; d.cg = x.cg || {}; if (x.v) d.v = x.v; d.m3 = x.m3 || 0; }
+  else if (kind == 'c') { d.amb = x.amb || []; d.cg = x.cg || {}; if (x.v) d.v = x.v; d.m3 = x.m3 || 0; d.m4 = x.m4 || 0; }
+  else if (kind == 'b') d.brand = x || {};
 }
 function drop(d, kind, id) {
   const f = a => a.filter(q => q.id != id);
@@ -50,6 +52,7 @@ function setSync(s, t) {
   setSync.last = [s, t];
 }
 function refresh() {
+  try { applyBrand(); } catch (e) {}
   const ae = document.activeElement;
   if (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName) && $('#main').contains(ae)) return;
   render(1);
@@ -108,7 +111,7 @@ async function pull() {
   let first = !Object.keys(synced).length;
   if (!rows.length && !first) { synced = {}; first = true; }   /* nuvem esvaziada por fora: sobe de novo o que existe aqui */
   if (first && rows.length && (!db.p.length || confirm('A nuvem já tem dados. Substituir os dados deste aparelho pelos da nuvem?'))) {
-    const n = { v: 0, amb: [], cg: {}, p: [], n: { f: [], i: [] }, log: [] };
+    const n = { v: 0, amb: [], cg: {}, p: [], n: { f: [], i: [] }, log: [], brand: {} };
     rows.forEach(r => place(n, r.kind, r.data));
     if (!n.n.f.some(f => f.id == 'geral')) n.n.f.unshift({ id: 'geral', name: 'Geral', par: null });
     db = mig(n); synced = {};
@@ -169,6 +172,7 @@ async function enter(s) {
   SES = s; WHO = (s.user && s.user.email) || '';
   try { localStorage.setItem('bvc_who', WHO); } catch (e) {}
   unlock(); const l = $('#login'); if (l) l.remove();
+  const sb = $('#shbtn'); if (sb) sb.hidden = false;
   setSync('busy', 'Sincronizando…');
   try { subscribe(); } catch (e) { console.warn('realtime', e); }
   try { await pull(); setSync('ok'); }
@@ -211,6 +215,7 @@ function opcoes() {
 <div class="row"><div class="t"><b>Conta</b><br><small>${CLOUD ? esc(WHO || '—') : 'Modo local: os dados ficam só neste aparelho'}</small></div><span class="chip" id="sync2"></span></div>
 <div class="tools" style="margin-top:16px"><button class="b" onclick="bk()">Baixar backup</button><button class="b s" onclick="$('#imp').click()">Importar backup</button>${DEF ? '<button class="b s" id="inst">Instalar aplicativo</button>' : ''}</div>
 <small>No iPhone ou iPad: toque em Compartilhar e depois em "Adicionar à Tela de Início". No computador, use o ícone de instalar na barra de endereço do Chrome ou do Edge.</small>
+${opAparencia()}
 ${CLOUD ? '<div class="tools" style="margin-top:18px"><button class="b d" onclick="sair()">Sair desta conta</button></div>' : ''}
 <div class="tools" style="margin-top:14px"><button class="b s" onclick="this.closest(\'.ov\').remove()">Fechar</button><small>Versão ${APPV.startsWith('__') ? 'de desenvolvimento' : APPV}</small></div>`);
   const [s, t] = setSync.last || ['local']; setSync(s, t);
@@ -233,8 +238,9 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   }).catch(() => {});
 }
 
-addEventListener('online', () => { if (!CLOUD) return; if (!SES) start(); else { try { subscribe(); } catch (e) {} pullSafe(); schedPush(); } });
+addEventListener('online', () => { if (!CLOUD || SHARE_T) return; if (!SES) start(); else { try { subscribe(); } catch (e) {} pullSafe(); schedPush(); } });
 addEventListener('offline', () => { if (CLOUD) setSync('off', 'Offline · salvo no aparelho'); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && SES && navigator.onLine) pullSafe(); });
 setInterval(() => { if (SES && !document.hidden && navigator.onLine) pullSafe(); }, 60000);
-start();
+applyTheme(); applyBrand();
+if (SHARE_T) verCompartilhado(SHARE_T); else start();

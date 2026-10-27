@@ -54,6 +54,14 @@ Tempo total: cerca de 30 minutos. Não precisa programar.
 - **Android (Chrome):** menu ⋮ → **Instalar aplicativo**.
 - **Windows / Mac (Chrome ou Edge):** ícone de instalar na barra de endereço, ou **Opções** → **Instalar aplicativo**.
 
+## Recursos extras (versão 2026.10.27-2)
+
+**Ative o compartilhamento (uma vez):** no Supabase, abra **SQL Editor** → **New query**, cole o conteúdo de `supabase/atualizacao-2-compartilhamento.sql` e clique em **Run**. Sem isso, o botão Compartilhar avisa que falta essa etapa.
+
+- **Tema claro/escuro:** botão de lua/sol no topo, ou Opções → Aparência (Claro, Escuro, Automático). Vale por aparelho.
+- **Imagem da empresa e capa:** no Painel, toque na câmera da imagem ou em "Adicionar capa". As imagens são reduzidas automaticamente e aparecem em todos os aparelhos.
+- **Link público:** abra a página (Painel, Equipe, Escalas, Ambientes, Férias ou Relatórios) → **Compartilhar** → escolha a validade → **Criar link**. Quem receber só enxerga, sem login. O link é uma foto do momento: use **Atualizar** para renová-la e **Revogar** para desativar.
+
 ## Como atualizar o aplicativo depois
 
 1. Quando houver uma versão nova, no repositório clique em **Add file** → **Upload files** e arraste os arquivos novos (eles substituem os antigos). Clique em **Commit changes**.
