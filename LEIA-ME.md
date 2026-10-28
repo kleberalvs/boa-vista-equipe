@@ -1,4 +1,4 @@
-# Boa Vista Corporate · Equipe (aplicativo)
+# Colaboradores · Boa Vista Corporate (aplicativo)
 
 Aplicativo de colaboradores, escalas, ambientes, férias, documentos em Word, relatórios, anotações e histórico.
 Funciona no computador, no celular e no tablet, instala como aplicativo, abre mesmo sem internet e mantém os aparelhos sincronizados.

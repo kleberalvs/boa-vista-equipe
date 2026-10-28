@@ -3,7 +3,7 @@
    Cada aparelho envia só o que mudou e recebe só o que os outros mudaram. Em conflito, vale a última gravação. */
 const CFG = window.BVC_CFG || {};
 const CLOUD = !!(CFG.url && CFG.key && window.supabase);
-const APPV = '2026.10.27-3';
+const APPV = '2026.10.28-1';
 let SB = null, SES = null, synced = {}, pushing = false, again = false, tmr = null, chan = null, DEF = null;
 try { synced = JSON.parse(localStorage.getItem('bvc_synced') || '{}'); } catch (e) { synced = {}; }
 const persistSynced = () => { try { localStorage.setItem('bvc_synced', JSON.stringify(synced)); } catch (e) {} };

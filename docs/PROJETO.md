@@ -1,4 +1,4 @@
-# Boa Vista Corporate · Equipe — registro do projeto
+# Colaboradores · Boa Vista Corporate — registro do projeto
 
 Documento de memória do projeto: como o ambiente foi criado e como ele funciona. Criado a partir da conversa de construção no Claude (a conversa continua no histórico do Claude do Kleber).
 
