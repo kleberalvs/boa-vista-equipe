@@ -3,8 +3,7 @@
    Cada aparelho envia só o que mudou e recebe só o que os outros mudaram. Em conflito, vale a última gravação. */
 const CFG = window.BVC_CFG || {};
 const CLOUD = !!(CFG.url && CFG.key && window.supabase);
-const APK = 'downloads/colaboradores.apk';
-const APPV = '2026.10.28-6';
+const APPV = '2026.10.28-7';
 const REC = /type=recovery/.test(location.hash), RECERR = /error_code=|error=access_denied/.test(location.hash);
 let SB = null, SES = null, synced = {}, pushing = false, again = false, tmr = null, chan = null, DEF = null;
 try { synced = JSON.parse(localStorage.getItem('bvc_synced') || '{}'); } catch (e) { synced = {}; }
@@ -255,21 +254,26 @@ async function sair() {
 
 /* opções, instalação e atualização */
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); DEF = e; });
+const instalado = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+function comoInstalar() {
+  const ua = navigator.userAgent, ios = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1), and = /android/i.test(ua);
+  const passos = ios ? ['Abra este endereço no <b>Safari</b> (o Chrome do iPhone não instala).', 'Toque no botão <b>Compartilhar</b> (quadrado com uma seta para cima).', 'Role e toque em <b>Adicionar à Tela de Início</b>.', 'Toque em <b>Adicionar</b>. O ícone aparece na tela inicial.']
+    : and ? ['Abra este endereço no <b>Chrome</b>.', 'Toque no menu <b>⋮</b> (três pontinhos, no canto superior).', 'Toque em <b>Instalar aplicativo</b> (ou <b>Adicionar à tela inicial</b>).', 'Confirme em <b>Instalar</b>. O ícone aparece na tela inicial.']
+    : ['Use o <b>Chrome</b> ou o <b>Edge</b>.', 'Clique no ícone de instalar na barra de endereço (um monitor com uma seta), ou no menu <b>⋮</b> → <b>Instalar Colaboradores</b>.', 'Confirme em <b>Instalar</b>.'];
+  const o = modal(`<h2>Instalar o aplicativo</h2><p class="sub" style="margin:0 0 12px">${ios ? 'No iPhone ou iPad' : and ? 'No Android' : 'No computador'}:</p><ol style="padding-left:22px;line-height:1.8">${passos.map(x => '<li>' + x + '</li>').join('')}</ol><div class="tools" style="margin-top:16px"><button class="b s" onclick="this.closest('.ov').remove()">Fechar</button></div>`);
+  return o;
+}
+window.addEventListener('appinstalled', () => { DEF = null; });
 function opcoes() {
   const o = modal(`<h2>Opções</h2>
 <div class="row"><div class="t"><b>Conta</b><br><small>${CLOUD ? esc(WHO || '—') : 'Modo local: os dados ficam só neste aparelho'}</small></div><span class="chip" id="sync2"></span></div>
-<div class="tools" style="margin-top:16px"><button class="b" onclick="bk()">Baixar backup</button><button class="b s" onclick="$('#imp').click()">Importar backup</button>${DEF ? '<button class="b s" id="inst">Instalar aplicativo</button>' : ''}</div>
-<div id="apkbox"></div>
-<small>No iPhone ou iPad: toque em Compartilhar e depois em "Adicionar à Tela de Início". No computador, use o ícone de instalar na barra de endereço do Chrome ou do Edge.</small>
+${instalado() ? '<div class="row" style="margin-top:12px"><div class="t"><b>Aplicativo instalado</b><br><small>Este aparelho já usa o Colaboradores como aplicativo.</small></div><span class="chip g">Instalado</span></div>' : '<div class="row" style="margin-top:12px"><div class="t"><b>Instalar no celular ou computador</b><br><small>Deixa o Colaboradores como um aplicativo na tela inicial, sem precisar de loja.</small></div><button class="b" id="inst">Instalar aplicativo</button></div>'}
+<div class="tools" style="margin-top:16px"><button class="b" onclick="bk()">Baixar backup</button><button class="b s" onclick="$('#imp').click()">Importar backup</button></div>
 ${opAparencia()}
 ${CLOUD ? '<div class="tools" style="margin-top:18px"><button class="b d" onclick="sair()">Sair desta conta</button></div>' : ''}
 <div class="tools" style="margin-top:14px"><button class="b s" onclick="this.closest(\'.ov\').remove()">Fechar</button><small>Versão ${APPV.startsWith('__') ? 'de desenvolvimento' : APPV}</small></div>`);
-  fetch(APK, { method: 'HEAD', cache: 'no-store' }).then(r => {
-    const bx = $('#apkbox'); if (!r.ok || !bx) return;
-    bx.innerHTML = `<div class="row" style="margin-top:14px"><div class="t"><b>Aplicativo para Android</b><br><small>Baixe o arquivo APK e abra-o no celular. Na primeira vez, o Android pede para permitir a instalação de fontes desconhecidas.</small></div><a class="b" style="text-decoration:none;display:inline-block" href="${APK}" download>Baixar APK</a></div>`;
-  }).catch(() => {});
   const [s, t] = setSync.last || ['local']; setSync(s, t);
-  const i = $('#inst'); if (i) i.onclick = async () => { DEF.prompt(); await DEF.userChoice; DEF = null; o.remove(); };
+  const i = $('#inst'); if (i) i.onclick = async () => { if (DEF) { DEF.prompt(); try { await DEF.userChoice; } catch (e) {} DEF = null; o.remove(); } else { o.remove(); comoInstalar(); } };
 }
 function avisoAtualizar() {
   if ($('#upd')) return;
