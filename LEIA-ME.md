@@ -62,6 +62,16 @@ Tempo total: cerca de 30 minutos. Não precisa programar.
 - **Imagem da empresa e capa:** no Painel, toque na câmera da imagem ou em "Adicionar capa". As imagens são reduzidas automaticamente e aparecem em todos os aparelhos.
 - **Link público:** abra a página (Painel, Equipe, Escalas, Ambientes, Férias ou Relatórios) → **Compartilhar** → escolha a validade → **Criar link**. Quem receber só enxerga, sem login. O link é uma foto do momento: use **Atualizar** para renová-la e **Revogar** para desativar.
 
+## Esqueci minha senha (configurar uma vez no Supabase)
+
+Na tela de login, o botão **Esqueci minha senha** envia um link de redefinição para o e-mail digitado (só funciona para e-mails já cadastrados). Para o link voltar ao app certo:
+
+1. Supabase → **Authentication → URL Configuration**.
+2. Em **Site URL**, coloque `https://kleberalvs.github.io/boa-vista-equipe/`.
+3. Em **Redirect URLs**, adicione o mesmo endereço e salve.
+
+O Supabase gratuito limita o envio de e-mails (poucos por hora). Se o e-mail não chegar, confira o spam e aguarde.
+
 ## Como atualizar o aplicativo depois
 
 1. Quando houver uma versão nova, no repositório clique em **Add file** → **Upload files** e arraste os arquivos novos (eles substituem os antigos). Clique em **Commit changes**.
