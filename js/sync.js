@@ -3,7 +3,8 @@
    Cada aparelho envia só o que mudou e recebe só o que os outros mudaram. Em conflito, vale a última gravação. */
 const CFG = window.BVC_CFG || {};
 const CLOUD = !!(CFG.url && CFG.key && window.supabase);
-const APPV = '2026.10.28-4';
+const APK = 'downloads/colaboradores.apk';
+const APPV = '2026.10.28-5';
 const REC = /type=recovery/.test(location.hash), RECERR = /error_code=|error=access_denied/.test(location.hash);
 let SB = null, SES = null, synced = {}, pushing = false, again = false, tmr = null, chan = null, DEF = null;
 try { synced = JSON.parse(localStorage.getItem('bvc_synced') || '{}'); } catch (e) { synced = {}; }
@@ -258,10 +259,15 @@ function opcoes() {
   const o = modal(`<h2>Opções</h2>
 <div class="row"><div class="t"><b>Conta</b><br><small>${CLOUD ? esc(WHO || '—') : 'Modo local: os dados ficam só neste aparelho'}</small></div><span class="chip" id="sync2"></span></div>
 <div class="tools" style="margin-top:16px"><button class="b" onclick="bk()">Baixar backup</button><button class="b s" onclick="$('#imp').click()">Importar backup</button>${DEF ? '<button class="b s" id="inst">Instalar aplicativo</button>' : ''}</div>
+<div id="apkbox"></div>
 <small>No iPhone ou iPad: toque em Compartilhar e depois em "Adicionar à Tela de Início". No computador, use o ícone de instalar na barra de endereço do Chrome ou do Edge.</small>
 ${opAparencia()}
 ${CLOUD ? '<div class="tools" style="margin-top:18px"><button class="b d" onclick="sair()">Sair desta conta</button></div>' : ''}
 <div class="tools" style="margin-top:14px"><button class="b s" onclick="this.closest(\'.ov\').remove()">Fechar</button><small>Versão ${APPV.startsWith('__') ? 'de desenvolvimento' : APPV}</small></div>`);
+  fetch(APK, { method: 'HEAD', cache: 'no-store' }).then(r => {
+    const bx = $('#apkbox'); if (!r.ok || !bx) return;
+    bx.innerHTML = `<div class="row" style="margin-top:14px"><div class="t"><b>Aplicativo para Android</b><br><small>Baixe o arquivo APK e abra-o no celular. Na primeira vez, o Android pede para permitir a instalação de fontes desconhecidas.</small></div><a class="b" style="text-decoration:none;display:inline-block" href="${APK}" download>Baixar APK</a></div>`;
+  }).catch(() => {});
   const [s, t] = setSync.last || ['local']; setSync(s, t);
   const i = $('#inst'); if (i) i.onclick = async () => { DEF.prompt(); await DEF.userChoice; DEF = null; o.remove(); };
 }
