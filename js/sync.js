@@ -4,7 +4,7 @@
 const CFG = window.BVC_CFG || {};
 const CLOUD = !!(CFG.url && CFG.key && window.supabase);
 const APK = 'downloads/colaboradores.apk';
-const APPV = '2026.10.28-5';
+const APPV = '2026.10.28-6';
 const REC = /type=recovery/.test(location.hash), RECERR = /error_code=|error=access_denied/.test(location.hash);
 let SB = null, SES = null, synced = {}, pushing = false, again = false, tmr = null, chan = null, DEF = null;
 try { synced = JSON.parse(localStorage.getItem('bvc_synced') || '{}'); } catch (e) { synced = {}; }

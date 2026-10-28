@@ -38,44 +38,61 @@ function applyBrand() {
 const heroData = () => new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const hero = () => `<section class="hero${brand().pos == 'c' ? ' c' : ''}"><div class="cover"><button class="b s cam" onclick="menuImagem('capa')">${ICO.cam}<span>${brand().cover ? 'Alterar capa' : 'Adicionar capa'}</span></button></div><div class="hrow"><div class="avw"><div class="avatar"><img alt=""></div><button class="b s ic cam2" onclick="menuImagem('logo')" aria-label="Trocar imagem da empresa" title="Trocar imagem da empresa">${ICO.cam}</button></div><div class="hinfo"><p class="sub" style="margin:0">${heroData()}</p></div></div></section>`;
 
-function lerImagem(file, max, lim) {
-  return new Promise((res, rej) => {
-    const u = URL.createObjectURL(file), im = new Image();
-    im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('imagem')); };
-    im.onload = () => {
-      URL.revokeObjectURL(u);
-      try {
-        const nw = im.naturalWidth || 512, nh = im.naturalHeight || 512;
-        let s = Math.min(1, max / Math.max(nw, nh)), out = null;
-        for (let i = 0; i < 8 && !out; i++) {
-          const w = Math.max(1, Math.round(nw * s)), h = Math.max(1, Math.round(nh * s));
-          const c = document.createElement('canvas'); c.width = w; c.height = h;
-          const x = c.getContext('2d'); x.drawImage(im, 0, 0, w, h);
-          let alpha = false; const d = x.getImageData(0, 0, w, h).data;
-          for (let k = 3; k < d.length; k += 44) if (d[k] < 250) { alpha = true; break; }
-          if (alpha) { const p = c.toDataURL('image/png'); if (p.length <= lim) out = p; }
-          else for (const q of [.88, .78, .68]) { const j = c.toDataURL('image/jpeg', q); if (j.length <= lim) { out = j; break; } }
-          s *= .8;
-        }
-        out ? res(out) : rej(new Error('grande'));
-      } catch (e) { rej(e); }
+/* editor de enquadramento: arrastar para posicionar, controle para ampliar ou reduzir */
+function editorImagem(src, tipo, blob) {
+  const capa = tipo == 'capa', ar = capa ? 3.2 : 1, OW = capa ? 1600 : 512, OH = Math.round(OW / ar), lim = capa ? 450000 : 250000;
+  const im = new Image();
+  im.onerror = () => { if (blob) URL.revokeObjectURL(src); toast('Não foi possível usar essa imagem'); };
+  im.onload = () => {
+    const iw = im.naturalWidth || 1, ih = im.naturalHeight || 1;
+    const o = modal(`<h2>${capa ? 'Ajustar capa' : 'Ajustar imagem'}</h2><p class="sub" style="margin:0 0 12px">Arraste a imagem para posicionar e use o controle para ampliar ou reduzir.</p><div id="cf" style="position:relative;width:${capa ? '100%' : 'min(100%,300px)'};aspect-ratio:${ar};margin:0 auto 14px;border-radius:${capa ? 16 : 24}px;overflow:hidden;background:var(--seg);touch-action:none;cursor:grab"><canvas id="cv" style="width:100%;height:100%;display:block"></canvas></div><label style="display:flex;gap:12px;align-items:center;font-size:13px;color:var(--mut)">Tamanho<input type="range" id="cz" min="0" max="100" step="1" value="0" style="flex:1;padding:0"></label><div class="tools" style="margin-top:16px"><button class="b" id="cs">Salvar</button><button class="b s" id="cc">Centralizar</button><button class="b s" id="cx">Cancelar</button></div>`);
+    const fr = $('#cf'), cv = $('#cv'), zs = $('#cz'), fw = fr.getBoundingClientRect().width || 300, fh = fw / ar, dpr = Math.min(2, devicePixelRatio || 1);
+    cv.width = Math.round(fw * dpr); cv.height = Math.round(fh * dpr);
+    const base = Math.max(fw / iw, fh / ih), zmin = Math.min(fw / iw, fh / ih) / base, zmax = 4;
+    let z = 1, ox = 0, oy = 0;
+    zs.value = (1 - zmin) / (zmax - zmin) * 100;
+    const clamp = () => {
+      const sw = iw * base * z, sh = ih * base * z;
+      ox = sw > fw ? Math.max(-(sw - fw) / 2, Math.min((sw - fw) / 2, ox)) : 0;
+      oy = sh > fh ? Math.max(-(sh - fh) / 2, Math.min((sh - fh) / 2, oy)) : 0;
     };
-    im.src = u;
-  });
+    const paint = (x, k) => { const s = base * z * k; x.drawImage(im, fw * k / 2 + ox * k - iw * s / 2, fh * k / 2 + oy * k - ih * s / 2, iw * s, ih * s); };
+    const draw = () => { clamp(); const x = cv.getContext('2d'); x.clearRect(0, 0, cv.width, cv.height); paint(x, cv.width / fw); };
+    zs.oninput = () => { z = zmin + (zmax - zmin) * zs.value / 100; draw(); };
+    let drag = null;
+    fr.onpointerdown = e => { drag = { x: e.clientX, y: e.clientY, ox, oy }; fr.setPointerCapture(e.pointerId); fr.style.cursor = 'grabbing'; };
+    fr.onpointermove = e => { if (!drag) return; ox = drag.ox + e.clientX - drag.x; oy = drag.oy + e.clientY - drag.y; draw(); };
+    fr.onpointerup = fr.onpointercancel = () => { drag = null; fr.style.cursor = 'grab'; };
+    fr.onwheel = e => { e.preventDefault(); zs.value = Math.max(0, Math.min(100, +zs.value - Math.sign(e.deltaY) * 4)); zs.oninput(); };
+    const fim = () => { if (blob) URL.revokeObjectURL(src); o.remove(); };
+    $('#cx').onclick = fim;
+    $('#cc').onclick = () => { ox = oy = 0; z = 1; zs.value = (1 - zmin) / (zmax - zmin) * 100; draw(); };
+    $('#cs').onclick = () => {
+      try {
+        let k = 1, out = null;
+        for (let i = 0; i < 8 && !out; i++) {
+          const c = document.createElement('canvas'); c.width = Math.round(OW * k); c.height = Math.round(OH * k);
+          const x = c.getContext('2d'); paint(x, c.width / fw);
+          let alpha = false; const d = x.getImageData(0, 0, c.width, c.height).data;
+          for (let q = 3; q < d.length; q += 44) if (d[q] < 250) { alpha = true; break; }
+          if (alpha) { const pn = c.toDataURL('image/png'); if (pn.length <= lim) out = pn; }
+          else for (const ql of [.88, .78, .68]) { const j = c.toDataURL('image/jpeg', ql); if (j.length <= lim) { out = j; break; } }
+          k *= .8;
+        }
+        if (!out) return toast('Imagem muito pesada. Use outra.');
+        const bd = brand(); bd[capa ? 'cover' : 'logo'] = out; bd.t = Date.now();
+        lg('Alterado', 'Marca', capa ? 'Capa' : 'Imagem da empresa', [capa ? 'Capa ajustada' : 'Imagem da empresa ajustada']);
+        save(1); fim(); applyBrand(); render(1); toast(capa ? 'Capa atualizada' : 'Imagem atualizada');
+      } catch (e) { toast('Não foi possível salvar a imagem'); }
+    };
+    draw();
+  };
+  im.src = src;
 }
 function escolherImagem(tipo) {
-  const capa = tipo == 'capa', i = document.createElement('input');
+  const i = document.createElement('input');
   i.type = 'file'; i.accept = 'image/*'; i.hidden = true; document.body.appendChild(i);
-  i.onchange = async () => {
-    const f = i.files[0]; i.remove(); if (!f) return;
-    try {
-      toast('Processando a imagem…');
-      const d = await lerImagem(f, capa ? 1600 : 512, capa ? 450000 : 250000), b = brand();
-      b[capa ? 'cover' : 'logo'] = d; b.t = Date.now();
-      lg('Alterado', 'Marca', capa ? 'Capa' : 'Imagem da empresa', [capa ? 'Capa trocada' : 'Imagem da empresa trocada']);
-      save(1); applyBrand(); render(1); toast(capa ? 'Capa atualizada' : 'Imagem atualizada');
-    } catch (e) { toast('Não foi possível usar essa imagem'); }
-  };
+  i.onchange = () => { const f = i.files[0]; i.remove(); if (f) editorImagem(URL.createObjectURL(f), tipo, true); };
   i.click();
 }
 function removerImagem(tipo) {
@@ -86,7 +103,7 @@ function removerImagem(tipo) {
 }
 function menuImagem(tipo) {
   const capa = tipo == 'capa', tem = !!brand()[capa ? 'cover' : 'logo'];
-  const o = modal(`<h2>${capa ? 'Capa' : 'Imagem da empresa'}</h2>${capa ? '' : `<div class="seg" id="posseg" role="group" aria-label="Posição da imagem" style="margin-bottom:14px"><button data-p="l" class="${brand().pos == 'c' ? '' : 'on'}">Alinhar à esquerda</button><button data-p="c" class="${brand().pos == 'c' ? 'on' : ''}">Centralizar</button></div>`}<p class="sub" style="margin:0 0 14px">${capa ? 'Use uma imagem larga, de preferência na horizontal. Ela aparece no topo do Painel.' : 'Aparece no topo do app e no Painel. Pode ser uma foto ou um logo (PNG com fundo transparente funciona bem).'} A imagem é reduzida automaticamente e vale para todos os aparelhos.</p><div class="tools"><button class="b" id="ei">Escolher imagem</button>${tem ? `<button class="b d" id="ri">${capa ? 'Remover capa' : 'Voltar à imagem padrão'}</button>` : ''}<button class="b s" onclick="this.closest('.ov').remove()">Cancelar</button></div>`);
+  const o = modal(`<h2>${capa ? 'Capa' : 'Imagem da empresa'}</h2>${capa ? '' : `<div class="seg" id="posseg" role="group" aria-label="Posição da imagem" style="margin-bottom:14px"><button data-p="l" class="${brand().pos == 'c' ? '' : 'on'}">Alinhar à esquerda</button><button data-p="c" class="${brand().pos == 'c' ? 'on' : ''}">Centralizar</button></div>`}<p class="sub" style="margin:0 0 14px">${capa ? 'Use uma imagem larga, de preferência na horizontal. Ela aparece no topo do Painel.' : 'Aparece no topo do app e no Painel. Pode ser uma foto ou um logo (PNG com fundo transparente funciona bem).'} A imagem é reduzida automaticamente e vale para todos os aparelhos.</p><div class="tools"><button class="b" id="ei">Escolher imagem</button>${tem ? `<button class="b s" id="aj">Ajustar enquadramento</button><button class="b d" id="ri">${capa ? 'Remover capa' : 'Voltar à imagem padrão'}</button>` : ''}<button class="b s" onclick="this.closest('.ov').remove()">Cancelar</button></div>`);
   o.querySelectorAll('#posseg button').forEach(x => x.onclick = () => {
     const b = brand(), v = x.dataset.p;
     if ((b.pos || 'l') == v) return;
@@ -96,6 +113,7 @@ function menuImagem(tipo) {
     o.querySelectorAll('#posseg button').forEach(y => y.classList.toggle('on', y.dataset.p == v));
   });
   $('#ei').onclick = () => { o.remove(); escolherImagem(tipo); };
+  const aj = $('#aj'); if (aj) aj.onclick = () => { o.remove(); editorImagem(brand()[capa ? 'cover' : 'logo'], tipo); };
   const r = $('#ri'); if (r) r.onclick = () => { o.remove(); removerImagem(tipo); };
 }
 const opAparencia = () => `<h2 style="margin-top:20px">Aparência</h2><div class="seg" role="group" aria-label="Tema">${[['light', 'Claro'], ['dark', 'Escuro'], ['auto', 'Automático']].map(([k, v]) => `<button data-t="${k}" class="${themePref() == k ? 'on' : ''}" onclick="setTheme('${k}')">${v}</button>`).join('')}</div><small style="display:block;margin-top:6px">O tema vale só para este aparelho.</small><div class="tools" style="margin-top:14px"><button class="b s" onclick="menuImagem('logo')">Imagem da empresa</button><button class="b s" onclick="menuImagem('capa')">Capa</button></div>`;
