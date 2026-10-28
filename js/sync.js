@@ -3,7 +3,7 @@
    Cada aparelho envia só o que mudou e recebe só o que os outros mudaram. Em conflito, vale a última gravação. */
 const CFG = window.BVC_CFG || {};
 const CLOUD = !!(CFG.url && CFG.key && window.supabase);
-const APPV = '2026.10.28-8';
+const APPV = '2026.10.28-10';
 const REC = /type=recovery/.test(location.hash), RECERR = /error_code=|error=access_denied/.test(location.hash);
 let SB = null, SES = null, synced = {}, pushing = false, again = false, tmr = null, chan = null, DEF = null;
 try { synced = JSON.parse(localStorage.getItem('bvc_synced') || '{}'); } catch (e) { synced = {}; }
@@ -52,6 +52,13 @@ function setSync(s, t) {
   ['#sync', '#sync2'].forEach(id => { const e = $(id); if (e) { e.className = cls; e.textContent = txt; } });
   setSync.last = [s, t];
 }
+function pendentes() {
+  const cur = recs(); let n = 0;
+  for (const k in cur) if (k[0] != 'l' && synced[k] !== cj(cur[k])) n++;
+  n += Object.keys(synced).filter(k => k[0] != 'l' && !(k in cur)).length;
+  return n;
+}
+const offTxt = () => { const n = pendentes(); return 'Offline · ' + (n ? n + (n == 1 ? ' alteração' : ' alterações') + ' a enviar' : 'salvo no aparelho'); };
 function refresh() {
   try { applyBrand(); } catch (e) {}
   const ae = document.activeElement;
@@ -62,12 +69,12 @@ function refresh() {
 /* envio */
 function schedPush() {
   if (!CLOUD || !SES) return;
-  setSync(navigator.onLine ? 'pend' : 'off', navigator.onLine ? null : 'Offline · salvo no aparelho');
+  setSync(navigator.onLine ? 'pend' : 'off', navigator.onLine ? null : offTxt());
   clearTimeout(tmr); tmr = setTimeout(push, 1200);
 }
 async function push() {
   if (!CLOUD || !SES) return;
-  if (!navigator.onLine) { setSync('off', 'Offline · salvo no aparelho'); return; }
+  if (!navigator.onLine) { setSync('off', offTxt()); return; }
   if (pushing) { again = true; return; }
   pushing = true; setSync('busy', 'Enviando…');
   try {
@@ -168,8 +175,21 @@ async function start() {
   if (REC && s) { history.replaceState(null, '', location.pathname + location.search); return showReset(); }
   if (RECERR) history.replaceState(null, '', location.pathname + location.search);
   if (s) return enter(s);
-  if (!navigator.onLine && localStorage.getItem('bvc_who')) { WHO = localStorage.getItem('bvc_who'); unlock(); setSync('off', 'Offline · dados do aparelho'); return; }
+  if (!REC && !RECERR && localStorage.getItem('bvc_who') && await semRede()) return modoOffline();
   showLogin();
+}
+/* sem internet (ou sinal tão fraco que o servidor não responde): usa os dados do aparelho e tenta de novo sozinho */
+let retryT = null;
+async function semRede() {
+  if (!navigator.onLine) return true;
+  try { await fetch(CFG.url + '/auth/v1/health', { mode: 'no-cors', cache: 'no-store', signal: window.AbortSignal && AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined }); return false; }
+  catch (e) { return true; }
+}
+function modoOffline() {
+  WHO = localStorage.getItem('bvc_who') || ''; unlock();
+  const l = $('#login'); if (l) l.remove();
+  setSync('off', offTxt());
+  if (!retryT) retryT = setInterval(() => { if (SES) { clearInterval(retryT); retryT = null; } else start(); }, 15000);
 }
 async function enter(s) {
   SES = s; WHO = (s.user && s.user.email) || '';
@@ -293,7 +313,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 }
 
 addEventListener('online', () => { if (!CLOUD || SHARE_T) return; if (!SES) start(); else { try { subscribe(); } catch (e) {} pullSafe(); schedPush(); } });
-addEventListener('offline', () => { if (CLOUD) setSync('off', 'Offline · salvo no aparelho'); });
+addEventListener('offline', () => { if (CLOUD) setSync('off', offTxt()); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && SES && navigator.onLine) pullSafe(); });
 setInterval(() => { if (SES && !document.hidden && navigator.onLine) pullSafe(); }, 60000);
 applyTheme(); applyBrand();

@@ -72,6 +72,14 @@ Na tela de login, o botão **Esqueci minha senha** envia um link de redefiniçã
 
 O Supabase gratuito limita o envio de e-mails (poucos por hora). Se o e-mail não chegar, confira o spam e aguarde.
 
+## Uso sem internet
+
+- O aplicativo abre sem internet e mostra os dados da última sincronização. É preciso **abrir uma vez com internet** em cada aparelho (e entrar com o login) para ele ficar guardado.
+- Alterações feitas offline ficam salvas no aparelho. O topo mostra **Offline · N alterações a enviar**. Ao voltar a internet (ou o sinal melhorar), o app envia tudo sozinho e recebe o que os outros aparelhos mudaram.
+- Se duas pessoas editarem o mesmo colaborador, vale a última gravação (o Histórico mostra quem mudou).
+- Precisam de internet: criar e gerenciar links públicos, "Esqueci minha senha" e a primeira entrada em um aparelho novo.
+- No iPhone/iPad, use o app instalado na tela inicial: o Safari pode apagar os dados de sites que ficam muitos dias sem uso.
+
 ## Como atualizar o aplicativo depois
 
 1. Quando houver uma versão nova, no repositório clique em **Add file** → **Upload files** e arraste os arquivos novos (eles substituem os antigos). Clique em **Commit changes**.
