@@ -10,6 +10,31 @@ const ICO = {
 };
 const SHARE_T = (location.hash.match(/^#v=([A-Za-z0-9_-]{20,64})$/) || [])[1] || null;
 
+/* ---------- celular: barra inferior, cartões e ajustes ---------- */
+const isMob = () => matchMedia('(max-width:720px)').matches;
+const TABS = [
+  ['painel', 'Painel', '<rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/>'],
+  ['equipe', 'Equipe', '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 3-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17.5 14.2c2.4.2 4 2 4 4.8"/>'],
+  ['escalas', 'Escalas', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'],
+  ['ambientes', 'Ambientes', '<path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 9h2a2 2 0 0 1 2 2v10"/><path d="M8 7h4M8 11h4M8 15h4M2 21h20"/>']
+];
+const MAIS = ['ferias', 'documentos', 'relatorios', 'notas', 'historico'];
+function buildTabbar() {
+  const t = $('#tabbar'); if (!t) return;
+  t.innerHTML = TABS.map(([v, n, d]) => `<button data-v="${v}" onclick="go('${v}')">${SVG(d, 24)}<span>${n}</span></button>`).join('') + `<button data-v="mais" onclick="menuMais()"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg><span>Mais</span></button>`;
+  syncTab();
+}
+function syncTab() {
+  document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('on', b.dataset.v == view || (b.dataset.v == 'mais' && MAIS.includes(view))));
+}
+function menuMais() {
+  const o = modal(`<h2>Mais</h2><div class="mais">${MAIS.map(v => `<button class="${v == view ? 'on' : ''}" data-v="${v}"><span>${NAV[v]}</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>`).join('')}</div>`);
+  o.querySelectorAll('.mais button').forEach(b => b.onclick = () => { o.remove(); go(b.dataset.v); });
+}
+const escMob = () => `<h1>Escalas</h1><p class="sub">Horário de entrada e saída de cada pessoa. Toque num cartão para editar.</p><div class="stack">${sorted().map(p => `<div class="card click" onclick="edit('${p.id}')"><div class="row nb"><div class="t"><b>${esc(p.nome)}</b></div><span class="chip g">${hh(week(p))}/sem</span></div>${grp(p).map(x => { const i = x.indexOf(': '); return `<div class="gl"><span>${esc(x.slice(0, i))}</span><b>${esc(x.slice(i + 2))}</b></div>`; }).join('') || '<small>Sem escala</small>'}</div>`).join('')}</div>`;
+const ferMob = () => `<h1>Férias</h1><p class="sub">Após 12 meses de admissão o direito nasce e a empresa tem mais 12 meses para conceder. Informe quantos períodos já foram gozados.</p><div class="stack">${sorted().map(p => { const f = fer(p); return `<div class="card"><div class="row nb"><div class="t"><b>${esc(p.nome)}</b><br><small>Admissão ${fd(p.adm)}</small></div><span class="chip ${f.c}">${f.st}</span></div><div class="gl"><span>Direito em</span><b>${fx(f.aq)}</b></div><div class="gl"><span>Limite</span><b>${fx(f.lim)}</b></div><div class="f fm"><label>Gozados<input type="number" min="0" max="40" value="${esc(p.gozadas)}" onchange="upd('${p.id}','gozadas',this.value)"></label><label>Início<input type="date" value="${p.fIni}" onchange="upd('${p.id}','fIni',this.value)"></label><label>Fim<input type="date" value="${p.fFim}" onchange="upd('${p.id}','fFim',this.value)"></label></div></div>`; }).join('')}</div>`;
+matchMedia('(max-width:720px)').addEventListener && matchMedia('(max-width:720px)').addEventListener('change', () => { try { render(1); } catch (e) {} });
+
 /* ---------- tema ---------- */
 const THEME_KEY = 'bvc_theme', mq = matchMedia('(prefers-color-scheme: dark)');
 const themePref = () => { try { return localStorage.getItem(THEME_KEY) || 'auto'; } catch (e) { return 'auto'; } };

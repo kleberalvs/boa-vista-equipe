@@ -3,7 +3,7 @@
    Cada aparelho envia só o que mudou e recebe só o que os outros mudaram. Em conflito, vale a última gravação. */
 const CFG = window.BVC_CFG || {};
 const CLOUD = !!(CFG.url && CFG.key && window.supabase);
-const APPV = '2026.10.28-10';
+const APPV = '2026.10.28-14';
 const REC = /type=recovery/.test(location.hash), RECERR = /error_code=|error=access_denied/.test(location.hash);
 let SB = null, SES = null, synced = {}, pushing = false, again = false, tmr = null, chan = null, DEF = null;
 try { synced = JSON.parse(localStorage.getItem('bvc_synced') || '{}'); } catch (e) { synced = {}; }
@@ -50,6 +50,7 @@ function setSync(s, t) {
   const txt = t || { local: 'Modo local', ok: 'Sincronizado', busy: 'Sincronizando…', pend: 'Alterações pendentes', off: 'Offline', err: 'Falha ao sincronizar' }[s];
   const cls = 'chip ' + ({ ok: 'g', busy: 'b', pend: 'o', off: 'o', err: 'r' }[s] || '');
   ['#sync', '#sync2'].forEach(id => { const e = $(id); if (e) { e.className = cls; e.textContent = txt; } });
+  const sb = $('#sbar'); if (sb) { sb.hidden = !['off', 'pend', 'err'].includes(s); sb.textContent = txt; sb.className = s == 'err' ? 'e' : ''; }
   setSync.last = [s, t];
 }
 function pendentes() {
@@ -316,6 +317,6 @@ addEventListener('online', () => { if (!CLOUD || SHARE_T) return; if (!SES) star
 addEventListener('offline', () => { if (CLOUD) setSync('off', offTxt()); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && SES && navigator.onLine) pullSafe(); });
 setInterval(() => { if (SES && !document.hidden && navigator.onLine) pullSafe(); }, 60000);
-applyTheme(); applyBrand();
+applyTheme(); applyBrand(); buildTabbar();
 (function () { const s = $('#splash'); if (!s) return; const f = () => { s.classList.add('out'); setTimeout(() => s.remove(), 700); }; s.onclick = f; setTimeout(f, SHARE_T ? 0 : 1500); })();
 if (SHARE_T) verCompartilhado(SHARE_T); else start();

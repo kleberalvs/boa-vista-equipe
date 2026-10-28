@@ -18,6 +18,8 @@ Novidades de 27/10/2026 (versão 2026.10.27-2):
 - Link público de visualização (somente leitura, sem login).
 - Cargo do Kleber: Gestor Administrativo Financeiro.
 
+Celular (28/10/2026): barra de navegação fixa embaixo (Painel, Equipe, Escalas, Ambientes, Mais), cabeçalho compacto com ícones, Escalas e Férias em cartões, folhas inferiores para janelas, barra de status offline, travas contra zoom e transições suaves entre páginas.
+
 ## Arquitetura
 - Scripts clássicos em ordem: `timbrado.js` → `docx.js` → `extras.js` → `app.js` → `sync.js`.
 - `db` = {p, amb, cg, n:{f,i}, log, brand, v, m3, m4}; salvo em `localStorage` (`bvc_db`) e sincronizado.

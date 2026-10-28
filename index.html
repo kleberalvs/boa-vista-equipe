@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Colaboradores · Boa Vista Corporate</title>
 <meta name="description" content="Colaboradores, escalas, férias e documentos do Boa Vista Corporate">
 <meta name="theme-color" content="#f5f5f7">
@@ -22,10 +22,12 @@
 <div id="splash" aria-hidden="true"><h1>Colaboradores</h1><img class="def" src="assets/logo.png" alt=""></div>
 <div id="app">
 <header>
-<div class="top"><img id="hlogo" class="def" src="assets/logo.png" alt="Boa Vista Corporate"><div class="tools" style="margin:0"><span id="sync" class="chip"></span><button class="b s ic" id="tbtn" onclick="alternarTema()" aria-label="Alternar tema"></button><button class="b s" id="shbtn" hidden onclick="compartilhar()">Compartilhar</button><button class="b s" onclick="opcoes()">Opções</button></div></div>
+<div class="top"><img id="hlogo" class="def" src="assets/logo.png" alt="Boa Vista Corporate"><div class="tools" style="margin:0"><span id="sync" class="chip"></span><button class="b s ic" id="tbtn" onclick="alternarTema()" aria-label="Alternar tema"></button><button class="b s" id="shbtn" hidden onclick="compartilhar()" aria-label="Compartilhar"><span class="lbl">Compartilhar</span><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button><button class="b s" onclick="opcoes()" aria-label="Opções"><span class="lbl">Opções</span><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div></div>
 <nav id="nav"></nav>
+<div id="sbar" hidden></div>
 </header>
 <main id="main"></main>
+<div id="tabbar" role="navigation" aria-label="Menu principal"></div>
 </div>
 <div id="viewer"><header class="vtop"><div><img id="vlogo" class="def" src="assets/logo.png" alt="Boa Vista Corporate"><span id="vbadge" class="chip">Carregando…</span></div></header><main id="vbody" class="in"></main></div>
 <input id="imp" type="file" accept=".json" hidden onchange="imp(this)">
