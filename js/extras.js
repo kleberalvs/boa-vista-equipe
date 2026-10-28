@@ -36,7 +36,7 @@ function applyBrand() {
   const lg0 = $('#login img'); if (lg0) { lg0.src = b.logo || 'assets/logo.png'; lg0.className = b.logo ? 'custom' : 'def'; }
 }
 const heroData = () => new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-const hero = () => `<section class="hero"><div class="cover"><button class="b s cam" onclick="menuImagem('capa')">${ICO.cam}<span>${brand().cover ? 'Alterar capa' : 'Adicionar capa'}</span></button></div><div class="hrow"><div class="avw"><div class="avatar"><img alt=""></div><button class="b s ic cam2" onclick="menuImagem('logo')" aria-label="Trocar imagem da empresa" title="Trocar imagem da empresa">${ICO.cam}</button></div><div class="hinfo"><p class="sub" style="margin:0">${heroData()}</p></div></div></section>`;
+const hero = () => `<section class="hero${brand().pos == 'c' ? ' c' : ''}"><div class="cover"><button class="b s cam" onclick="menuImagem('capa')">${ICO.cam}<span>${brand().cover ? 'Alterar capa' : 'Adicionar capa'}</span></button></div><div class="hrow"><div class="avw"><div class="avatar"><img alt=""></div><button class="b s ic cam2" onclick="menuImagem('logo')" aria-label="Trocar imagem da empresa" title="Trocar imagem da empresa">${ICO.cam}</button></div><div class="hinfo"><p class="sub" style="margin:0">${heroData()}</p></div></div></section>`;
 
 function lerImagem(file, max, lim) {
   return new Promise((res, rej) => {
@@ -86,7 +86,15 @@ function removerImagem(tipo) {
 }
 function menuImagem(tipo) {
   const capa = tipo == 'capa', tem = !!brand()[capa ? 'cover' : 'logo'];
-  const o = modal(`<h2>${capa ? 'Capa' : 'Imagem da empresa'}</h2><p class="sub" style="margin:0 0 14px">${capa ? 'Use uma imagem larga, de preferência na horizontal. Ela aparece no topo do Painel.' : 'Aparece no topo do app e no Painel. Pode ser uma foto ou um logo (PNG com fundo transparente funciona bem).'} A imagem é reduzida automaticamente e vale para todos os aparelhos.</p><div class="tools"><button class="b" id="ei">Escolher imagem</button>${tem ? `<button class="b d" id="ri">${capa ? 'Remover capa' : 'Voltar à imagem padrão'}</button>` : ''}<button class="b s" onclick="this.closest('.ov').remove()">Cancelar</button></div>`);
+  const o = modal(`<h2>${capa ? 'Capa' : 'Imagem da empresa'}</h2>${capa ? '' : `<div class="seg" id="posseg" role="group" aria-label="Posição da imagem" style="margin-bottom:14px"><button data-p="l" class="${brand().pos == 'c' ? '' : 'on'}">Alinhar à esquerda</button><button data-p="c" class="${brand().pos == 'c' ? 'on' : ''}">Centralizar</button></div>`}<p class="sub" style="margin:0 0 14px">${capa ? 'Use uma imagem larga, de preferência na horizontal. Ela aparece no topo do Painel.' : 'Aparece no topo do app e no Painel. Pode ser uma foto ou um logo (PNG com fundo transparente funciona bem).'} A imagem é reduzida automaticamente e vale para todos os aparelhos.</p><div class="tools"><button class="b" id="ei">Escolher imagem</button>${tem ? `<button class="b d" id="ri">${capa ? 'Remover capa' : 'Voltar à imagem padrão'}</button>` : ''}<button class="b s" onclick="this.closest('.ov').remove()">Cancelar</button></div>`);
+  o.querySelectorAll('#posseg button').forEach(x => x.onclick = () => {
+    const b = brand(), v = x.dataset.p;
+    if ((b.pos || 'l') == v) return;
+    b.pos = v; b.t = Date.now();
+    lg('Alterado', 'Marca', 'Imagem da empresa', [v == 'c' ? 'Imagem centralizada no Painel' : 'Imagem alinhada à esquerda no Painel']);
+    save(1); render(1);
+    o.querySelectorAll('#posseg button').forEach(y => y.classList.toggle('on', y.dataset.p == v));
+  });
   $('#ei').onclick = () => { o.remove(); escolherImagem(tipo); };
   const r = $('#ri'); if (r) r.onclick = () => { o.remove(); removerImagem(tipo); };
 }

@@ -3,7 +3,7 @@
    Cada aparelho envia só o que mudou e recebe só o que os outros mudaram. Em conflito, vale a última gravação. */
 const CFG = window.BVC_CFG || {};
 const CLOUD = !!(CFG.url && CFG.key && window.supabase);
-const APPV = '2026.10.28-2';
+const APPV = '2026.10.28-4';
 const REC = /type=recovery/.test(location.hash), RECERR = /error_code=|error=access_denied/.test(location.hash);
 let SB = null, SES = null, synced = {}, pushing = false, again = false, tmr = null, chan = null, DEF = null;
 try { synced = JSON.parse(localStorage.getItem('bvc_synced') || '{}'); } catch (e) { synced = {}; }
@@ -287,4 +287,5 @@ addEventListener('offline', () => { if (CLOUD) setSync('off', 'Offline · salvo 
 document.addEventListener('visibilitychange', () => { if (!document.hidden && SES && navigator.onLine) pullSafe(); });
 setInterval(() => { if (SES && !document.hidden && navigator.onLine) pullSafe(); }, 60000);
 applyTheme(); applyBrand();
+(function () { const s = $('#splash'); if (!s) return; const f = () => { s.classList.add('out'); setTimeout(() => s.remove(), 700); }; s.onclick = f; setTimeout(f, SHARE_T ? 0 : 1500); })();
 if (SHARE_T) verCompartilhado(SHARE_T); else start();
