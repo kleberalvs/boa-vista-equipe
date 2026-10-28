@@ -29,11 +29,9 @@ if (mq.addEventListener) mq.addEventListener('change', () => { if (themePref() =
 /* ---------- imagem da empresa e capa ---------- */
 const brand = () => db.brand || (db.brand = {});
 function applyBrand() {
-  const b = brand(), h = $('#hlogo');
-  if (h) { h.src = b.logo || 'assets/logo.png'; h.className = b.logo ? 'custom' : 'def'; }
+  const b = brand();
   const cv = $('.cover'); if (cv) cv.style.backgroundImage = b.cover ? `url("${b.cover}")` : '';
   const av = $('.avatar img'); if (av) { av.src = b.logo || 'assets/logo.png'; av.className = b.logo ? '' : 'def'; }
-  const lg0 = $('#login img'); if (lg0) { lg0.src = b.logo || 'assets/logo.png'; lg0.className = b.logo ? 'custom' : 'def'; }
 }
 const heroData = () => new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const hero = () => `<section class="hero${brand().pos == 'c' ? ' c' : ''}"><div class="cover"><button class="b s cam" onclick="menuImagem('capa')">${ICO.cam}<span>${brand().cover ? 'Alterar capa' : 'Adicionar capa'}</span></button></div><div class="hrow"><div class="avw"><div class="avatar"><img alt=""></div><button class="b s ic cam2" onclick="menuImagem('logo')" aria-label="Trocar imagem da empresa" title="Trocar imagem da empresa">${ICO.cam}</button></div><div class="hinfo"><p class="sub" style="margin:0">${heroData()}</p></div></div></section>`;
@@ -201,7 +199,6 @@ async function verCompartilhado(t) {
     if (error) throw error;
     if (!data) return msg('Este link não está mais disponível', 'Ele expirou ou foi desativado. Peça um novo link a quem compartilhou.');
     const p = data.payload || {};
-    if (p.logo) { const l = $('#vlogo'); l.src = p.logo; l.className = 'custom'; }
     $('#vbadge').textContent = 'Somente leitura · atualizado em ' + fdh(data.updated_at);
     body.innerHTML = limpaHTML(p.html || ''); anim(body);
     document.title = (data.title || 'Visualização') + ' · Boa Vista Corporate';
