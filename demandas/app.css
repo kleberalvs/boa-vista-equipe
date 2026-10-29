@@ -292,3 +292,6 @@ button.row:active,.row.tap:active{background:#e9e9ee}
 .stat b{display:block;font-size:22px;letter-spacing:-.01em}
 .stat span{font-size:13px;color:var(--label2)}
 a.btn{text-decoration:none}
+
+/* cartão de feedback: etiquetas e data quebram linha em telas estreitas (nada passa da largura da tela) */
+.card.fb .top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;min-width:0}

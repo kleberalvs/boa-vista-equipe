@@ -4,7 +4,7 @@
    Dados e login: Supabase (mesmo projeto do painel de Colaboradores). */
 'use strict';
 
-const APPV = '2026.10.29-5';
+const APPV = '2026.10.29-6';
 const DOMINIO = '@demandas.bvc.app';
 const BUCKET = 'demandas-fotos';
 const CFG = window.BVC_CFG || {};
@@ -165,10 +165,25 @@ const IDB = {
       t.oncomplete = () => ok(req && req.result); t.onerror = () => err(t.error);
     });
   },
-  todos() { return this.tx('readonly', s => s.getAll()).catch(() => []); },
-  por(i) { return this.tx('readwrite', s => s.put(i)); },
-  tirar(id) { return this.tx('readwrite', s => s.delete(id)); }
+  // Fotos guardadas como bytes (o Safari em aba anônima não aceita guardar arquivos de imagem).
+  // Se o aparelho não deixar guardar nada, a conclusão fica na memória e é enviada na hora.
+  async todos() {
+    let l = [];
+    try { l = (await this.tx('readonly', s => s.getAll())) || []; } catch (e) { }
+    l = l.map(i => ({ ...i, blobs: (i.blobs || []).map(b => b && b.buf ? new Blob([b.buf], { type: b.type || 'image/jpeg' }) : b) }));
+    const ids = new Set(l.map(i => i.id));
+    return [...l, ...[...MEM.values()].filter(i => !ids.has(i.id))];
+  },
+  async por(i) {
+    try {
+      const blobs = await Promise.all((i.blobs || []).map(async b => b instanceof Blob ? { buf: await b.arrayBuffer(), type: b.type || 'image/jpeg' } : b));
+      await this.tx('readwrite', s => s.put({ ...i, blobs }));
+      MEM.delete(i.id); return 'aparelho';
+    } catch (e) { MEM.set(i.id, i); return 'memoria'; }
+  },
+  async tirar(id) { MEM.delete(id); try { await this.tx('readwrite', s => s.delete(id)); } catch (e) { } }
 };
+const MEM = new Map();
 
 async function lerFila() {
   Object.values(S.pend).forEach(p => (p.fotos || []).forEach(u => URL.revokeObjectURL(u)));
@@ -678,11 +693,11 @@ async function concluir() {
   const obs = (($('#obsIn') || {}).value || '').trim();
   const rid = crypto.randomUUID();
   const item = { id: rid, uid: S.user.id, tent: 0, blobs: fotos.map(f => f.blob), rec: { id: rid, demanda_id: id, ref, titulo: d.titulo, departamento_id: d.departamento_id, concluida_por: S.user.id, concluida_em: new Date().toISOString(), observacao: obs || null } };
-  try { await IDB.por(item); } catch (e) { return toast('Não foi possível salvar no aparelho: ' + erroTxt(e)); }
+  const onde = await IDB.por(item);
   await lerFila();
   fecharFolha(); render();
   if (navigator.vibrate) navigator.vibrate(12);
-  toast(navigator.onLine ? 'Demanda concluída' : 'Concluída. Será enviada quando houver internet.');
+  toast(navigator.onLine ? 'Demanda concluída' : onde === 'memoria' ? 'Sem internet: mantenha o app aberto até a conexão voltar para enviar.' : 'Concluída. Será enviada quando houver internet.');
   enviarFila();
 }
 async function desfazer() {
@@ -1125,7 +1140,7 @@ function vFeedback() {
       <div class="top">${g ? `<span class="av" style="width:28px;height:28px;font-size:11.5px;background:${corPessoa(perfil(f.autor))}">${esc(ini(nomeDe(f.autor)))}</span><b style="font-size:15px">${esc(primeiroNome(nomeDe(f.autor)))}</b>` : ''}
         <span class="chip c" style="--c:${tc}">${esc(tn)}</span>${dp ? `<span class="chip c" style="--c:${dp.cor}">${esc(dp.nome)}</span>` : ''}
         ${f.status === 'novo' ? `<span class="chip blue">${g ? 'Novo' : 'Enviado'}</span>` : f.status === 'resolvido' ? '<span class="chip green">Resolvido</span>' : !g ? '<span class="chip">Lido</span>' : ''}
-        <span class="muted" style="white-space:nowrap">${esc(fmtDataHora(f.criado_em))}</span></div>
+        <span class="muted" style="white-space:nowrap;margin-left:auto">${esc(fmtDataHora(f.criado_em))}</span></div>
       <p>${esc(f.texto)}</p>
       ${f.foto ? `<div class="thumbs" style="margin-top:8px">${imgFoto(f.foto)}</div>` : ''}
       ${f.resposta ? `<div class="reply"><b>Resposta${g ? '' : ' do gestor'}</b>${esc(f.resposta)}</div>` : ''}</div>`;
