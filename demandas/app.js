@@ -4,7 +4,7 @@
    Dados e login: Supabase (mesmo projeto do painel de Colaboradores). */
 'use strict';
 
-const APPV = '2026.10.29-6';
+const APPV = '2026.10.29-7';
 const DOMINIO = '@demandas.bvc.app';
 const BUCKET = 'demandas-fotos';
 const CFG = window.BVC_CFG || {};
@@ -1254,6 +1254,39 @@ async function instalar() {
       : '<li>Toque no menu <b>⋮</b> do Chrome.</li><li>Escolha <b>Instalar aplicativo</b> ou <b>Adicionar à tela inicial</b>.</li><li>Confirme.</li>'}</ol></div>
     <p class="note">No computador (Chrome ou Edge), use o ícone de instalar na barra de endereço.</p>` });
 }
+
+/* Arrastar a folha para baixo fecha (pela barrinha/cabeçalho, ou pelo conteúdo quando ele já está no topo) — só no celular */
+(function arrastarFolha() {
+  const sh = () => $('#sheet');
+  let y0 = 0, dy = 0, ativo = false, decidido = false, amostras = [];
+  const celular = () => !matchMedia('(min-width:700px)').matches;
+  addEventListener('touchstart', e => {
+    const s = sh(); if (!s || !s.classList.contains('on') || !celular() || e.touches.length !== 1) return;
+    if (!s.contains(e.target) || e.target.closest('input,textarea,select,.photos,.composer')) return;
+    const bd = s.querySelector('.bd'), noCab = !!e.target.closest('.hd');
+    if (!noCab && bd && bd.scrollTop > 0) return;
+    y0 = e.touches[0].clientY; dy = 0; amostras = []; ativo = true; decidido = noCab;
+  }, { passive: true });
+  addEventListener('touchmove', e => {
+    if (!ativo) return;
+    const s = sh(), d = e.touches[0].clientY - y0;
+    if (!decidido) { if (Math.abs(d) < 8) return; if (d < 0) { ativo = false; return; } decidido = true; }
+    dy = Math.max(0, d);
+    amostras.push([performance.now(), dy]); if (amostras.length > 6) amostras.shift();
+    if (dy > 0 && e.cancelable) e.preventDefault();
+    s.style.transition = 'none'; s.style.transform = `translateY(${dy}px)`;
+    $('#veil').style.opacity = String(Math.max(0, 1 - dy / (s.offsetHeight || 600)));
+  }, { passive: false });
+  const soltar = () => {
+    if (!ativo) return; ativo = false;
+    const s = sh(), a = amostras[0], z = amostras[amostras.length - 1], v = a && z && z[0] > a[0] ? (z[1] - a[1]) / (z[0] - a[0]) : 0, fechar = dy > Math.min(140, (s.offsetHeight || 600) * 0.3) || (v > 0.4 && dy > 30);
+    s.style.transition = ''; $('#veil').style.opacity = '';
+    if (fechar) { s.style.transform = ''; fecharFolha(); }
+    else s.style.transform = '';
+    dy = 0;
+  };
+  addEventListener('touchend', soltar); addEventListener('touchcancel', soltar);
+})();
 
 /* ---------------- início ---------------- */
 addEventListener('scroll', topo, { passive: true });
