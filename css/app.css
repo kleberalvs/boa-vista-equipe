@@ -67,7 +67,7 @@ pre.paper{white-space:pre-wrap;font:13px/1.6 ui-monospace,Menlo,monospace;backgr
 .lgd{margin:22px 0 10px;font-size:15px;color:var(--mut);font-weight:500}.lge{padding:14px 18px;margin-bottom:10px}.lgh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.lgh small{color:var(--mut)}.lgu{margin:8px 0 0 4px;padding-left:18px;color:var(--lgu);font-size:14px}.lgu li{margin:2px 0}
 .lock #app{visibility:hidden}
 #login{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:var(--bg);padding:20px}
-#login form{width:min(390px,100%);padding:28px}#login img{height:46px}
+#login form{width:min(390px,100%);padding:28px}#login img{height:30px;width:auto;display:block;margin:4px auto 6px}
 #upd{position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--gd);color:#fff;padding:8px 10px 8px 18px;border-radius:99px;z-index:120;display:flex;gap:14px;align-items:center;box-shadow:0 8px 28px rgba(0,0,0,.25);white-space:nowrap}
 @media print{#login,#upd{display:none!important}}
 

@@ -3,7 +3,7 @@
    Cada aparelho envia só o que mudou e recebe só o que os outros mudaram. Em conflito, vale a última gravação. */
 const CFG = window.BVC_CFG || {};
 const CLOUD = !!(CFG.url && CFG.key && window.supabase);
-const APPV = '2026.10.29-1';
+const APPV = '2026.10.29-2';
 const REC = /type=recovery/.test(location.hash), RECERR = /error_code=|error=access_denied/.test(location.hash);
 let SB = null, SES = null, synced = {}, pushing = false, again = false, tmr = null, chan = null, DEF = null;
 try { synced = JSON.parse(localStorage.getItem('bvc_synced') || '{}'); } catch (e) { synced = {}; }
@@ -208,7 +208,7 @@ async function enter(s) {
 function showLogin() {
   if ($('#login')) return;
   const d = document.createElement('div'); d.id = 'login';
-  d.innerHTML = `<form class="card"><img src="assets/logo.png" alt="Boa Vista Corporate"><h1 style="font-size:26px;margin:20px 0 4px">Entrar</h1><p class="sub" style="margin:0 0 16px">Acesso restrito à equipe da administração.</p><div class="f" style="grid-template-columns:1fr"><label>E-mail<input type="email" id="lg_e" autocomplete="username" required></label><label>Senha<input type="password" id="lg_s" autocomplete="current-password" required></label></div><button class="b" style="width:100%" id="lg_b">Entrar</button><p id="lg_m" class="sub" style="margin:12px 0 0;color:var(--c-r)"></p><button type="button" id="lg_f" class="b s" style="width:100%;margin-top:10px">Esqueci minha senha</button></form>`;
+  d.innerHTML = `<form class="card"><img class="def" src="assets/logo.png" alt="Boa Vista Corporate"><h1 style="font-size:26px;margin:20px 0 4px">Entrar</h1><p class="sub" style="margin:0 0 16px">Acesso restrito à equipe da administração.</p><div class="f" style="grid-template-columns:1fr"><label>E-mail<input type="email" id="lg_e" autocomplete="username" required></label><label>Senha<input type="password" id="lg_s" autocomplete="current-password" required></label></div><button class="b" style="width:100%" id="lg_b">Entrar</button><p id="lg_m" class="sub" style="margin:12px 0 0;color:var(--c-r)"></p><button type="button" id="lg_f" class="b s" style="width:100%;margin-top:10px">Esqueci minha senha</button></form>`;
   if (RECERR) d.querySelector('#lg_m').textContent = 'O link de redefinição é inválido ou expirou. Peça um novo em "Esqueci minha senha".';
   document.body.appendChild(d);
   $('#lg_f').onclick = async () => {
