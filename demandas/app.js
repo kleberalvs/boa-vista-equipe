@@ -4,7 +4,7 @@
    Dados e login: Supabase (mesmo projeto do painel de Colaboradores). */
 'use strict';
 
-const APPV = '2026.10.29-4';
+const APPV = '2026.10.29-5';
 const DOMINIO = '@demandas.bvc.app';
 const BUCKET = 'demandas-fotos';
 const CFG = window.BVC_CFG || {};
@@ -78,6 +78,9 @@ const donoPainel = () => gestor() && S.me.login.includes('@');   // conta do pai
 const dep = id => S.deps.find(d => d.id === id);
 const perfil = id => S.perfis.find(p => p.id === id);
 const dem = id => S.dem.find(d => d.id === id);
+const depsDe = d => (d && Array.isArray(d.departamentos) && d.departamentos.length ? d.departamentos : d ? [d.departamento_id] : []).filter(id => dep(id));
+const temDep = (d, id) => depsDe(d).includes(id);
+const chipsDeps = d => depsDe(d).map(id => `<span class="chip c" style="--c:${corDep(id)}">${esc(dep(id).nome)}</span>`).join('');
 const primeiroNome = n => String(n || '').trim().split(/\s+/)[0] || '—';
 const nomeDe = id => { const p = perfil(id); return p ? p.nome : 'Ex-colaborador'; };
 const ini = n => { const w = String(n || '?').trim().split(/\s+/); return ((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase(); };
@@ -112,6 +115,7 @@ function erroTxt(e) {
   if (/Invalid login credentials/i.test(m)) return 'Usuário ou senha incorretos.';
   if (/banned/i.test(m)) return 'Este acesso foi desativado. Fale com o gestor.';
   if (/Failed to fetch|NetworkError|Load failed|network|fetch/i.test(m)) return 'Sem conexão com a internet.';
+  if (/departamentos/i.test(m) && /does not exist|schema cache|could not find/i.test(m)) return 'Falta ativar vários departamentos no banco: rode a atualização 4 no Supabase (supabase/atualizacao-4-varios-departamentos.sql).';
   if (/dm_demandas_departamento_id_fkey/i.test(m)) return 'Este departamento ainda tem demandas. Mova ou exclua as demandas antes.';
   if (/row-level security|permission denied/i.test(m)) return 'Você não tem permissão para isso.';
   if (/Password should be at least|at least 6/i.test(m)) return 'A senha precisa ter pelo menos 6 caracteres.';
@@ -214,7 +218,7 @@ async function enviarFila() {
 }
 
 /* ---------------- fotos ---------------- */
-async function comprimir(file, max = 1600, q = 0.72) {
+async function comprimir(file, max = 1280, q = 0.7) {   // ~150–250 KB por foto, nítida na tela do celular
   let img;
   try { img = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
   catch (e) { img = await new Promise((ok, err) => { const i = new Image(); i.onload = () => ok(i); i.onerror = err; i.src = URL.createObjectURL(file); }); }
@@ -503,9 +507,9 @@ const vazio = (icone, t, txt, cor, extra = '') => `<div class="empty"><div class
 
 /* Linha de demanda */
 function linha(it, o = {}) {
-  const { d, ex } = it, c = corDep(d.departamento_id), ok = !!ex, wait = ex && ex._pend;
+  const { d, ex } = it, meus = (!gestor() && S.me && S.me.departamentos) || [], c = corDep(depsDe(d).find(x => meus.includes(x)) || d.departamento_id), ok = !!ex, wait = ex && ex._pend;
   const m = [];
-  if (o.dep) m.push(`<span class="chip c" style="--c:${c}">${esc((dep(d.departamento_id) || {}).nome || '—')}</span>`);
+  if (o.dep) m.push(chipsDeps(d) || '<span class="chip">—</span>');
   if (ok) m.push(wait ? '<span class="chip orange">Aguardando envio</span>' : `${esc(primeiroNome(nomeDe(ex.concluida_por)))} · ${hora(ex.concluida_em)}`);
   else if (d.tipo === 'especifica') m.push(it.atrasada ? `<span class="chip red">Atrasada · ${esc(prazoTxt(d.prazo))}</span>` : d.prazo ? `${ic('cal', 'xs')} ${esc(prazoTxt(d.prazo))}` : 'Específica');
   if (!ok && d.horario) m.push(`${ic('relogio', 'xs')} ${esc(d.horario)}`);
@@ -524,7 +528,8 @@ function linha(it, o = {}) {
 function listaAgrupada(its, o = {}) {
   if (!o.agrupar) return `<div class="list">${its.map(i => linha(i, o)).join('')}</div>`;
   const grupos = {};
-  its.forEach(i => (grupos[i.d.departamento_id] = grupos[i.d.departamento_id] || []).push(i));
+  const meus = (S.me && S.me.departamentos) || [];
+  its.forEach(i => { const k = depsDe(i.d).find(x => meus.includes(x)) || i.d.departamento_id; (grupos[k] = grupos[k] || []).push(i); });
   return S.deps.filter(d => grupos[d.id]).map(d => `<div class="sec"><span>${esc(d.nome)}</span></div><div class="list">${grupos[d.id].map(i => linha(i, o)).join('')}</div>`).join('');
 }
 
@@ -535,7 +540,7 @@ function vHojeColab() {
   const h = hoje(), its = ordenar(itensDoDia(h)), r = resumo(its);
   const aba = S.f.hc || 'fazer';
   const pend = its.filter(i => !i.ex && !i.futura), prox = its.filter(i => i.futura), feitas = its.filter(i => i.ex);
-  const multi = new Set(its.map(i => i.d.departamento_id)).size > 1;
+  const multi = ((S.me && S.me.departamentos) || []).length > 1 && new Set(its.map(i => depsDe(i.d).find(x => S.me.departamentos.includes(x)) || i.d.departamento_id)).size > 1;
   const msg = !r.total ? 'Nenhuma demanda prevista para hoje.' : r.feitas === r.total ? 'Tudo concluído. Ótimo trabalho!' : `${plural(r.total - r.feitas, 'demanda pendente', 'demandas pendentes')} de ${r.total}${r.atrasadas ? ` · ${r.atrasadas} atrasada${r.atrasadas > 1 ? 's' : ''}` : ''}`;
   let html = cab('Hoje', fmtLonga(h));
   html += `<div class="card hero">${anel(r.feitas, r.total)}<div><div class="big">${saudacao()}, ${esc(primeiroNome(S.me.nome))}</div><div class="muted">${esc(msg)}</div></div></div><div style="height:18px"></div>`;
@@ -554,7 +559,7 @@ function vHojeGestor() {
   const h = hoje(), D = S.dia || h, eHoje = D === h;
   const todos = ordenar(itensDoDia(D));
   const fdep = S.f.hdep && dep(S.f.hdep) ? S.f.hdep : null;
-  const its = fdep ? todos.filter(i => i.d.departamento_id === fdep) : todos;
+  const its = fdep ? todos.filter(i => temDep(i.d, fdep)) : todos;
   const r = resumo(todos), aba = S.f.hg || 'pend';
   const pend = its.filter(i => !i.ex && !i.futura), feitas = its.filter(i => i.ex), prox = its.filter(i => i.futura);
   const novosFb = S.fb.filter(f => f.status === 'novo').length;
@@ -563,10 +568,10 @@ function vHojeGestor() {
   if (!eHoje) html += `<div style="margin:-6px 0 14px"><button class="pill" onclick="S.dia=null;render()">${ic('cal', 's')} Voltar para hoje</button></div>`;
   html += `<div class="card hero">${anel(r.feitas, r.total)}<div style="flex:1"><div class="big">${r.feitas} de ${r.total}</div><div class="muted">${eHoje ? 'demandas concluídas hoje' : 'demandas concluídas neste dia'}${r.atrasadas ? ` · <span style="color:var(--red)">${r.atrasadas} atrasada${r.atrasadas > 1 ? 's' : ''}</span>` : ''}</div>
     ${novosFb ? `<button class="chip blue" style="margin-top:8px" onclick="ir('feedback')">${ic('fb', 'xs')} ${plural(novosFb, 'feedback novo', 'feedbacks novos')}</button>` : ''}</div></div>`;
-  const usados = S.deps.filter(d => todos.some(i => i.d.departamento_id === d.id));
+  const usados = S.deps.filter(d => todos.some(i => temDep(i.d, d.id)));
   if (usados.length) {
     html += `<div class="sec"><span>Departamentos</span>${fdep ? `<button onclick="filtro('hdep',null)">Ver todos</button>` : ''}</div><div class="deps">${usados.map(d => {
-      const di = todos.filter(i => i.d.departamento_id === d.id), rr = resumo(di);
+      const di = todos.filter(i => temDep(i.d, d.id)), rr = resumo(di);
       return `<button class="card dep ${fdep === d.id ? 'on' : ''}" style="--c:${d.cor}" onclick="filtro('hdep',${fdep === d.id ? 'null' : `'${d.id}'`})">${anel(rr.feitas, rr.total, d.cor, 44, 5)}<b>${esc(d.nome)}</b><span>${rr.feitas} de ${rr.total} concluídas</span></button>`;
     }).join('')}</div>`;
   }
@@ -622,7 +627,7 @@ function corpoItem() {
   const depId = d ? d.departamento_id : ex && ex.departamento_id, dp = dep(depId), c = corDep(depId);
   const h = hoje();
   const chips = [];
-  if (dp) chips.push(`<span class="chip c" style="--c:${c}">${esc(dp.nome)}</span>`);
+  if (d && depsDe(d).length) chips.push(chipsDeps(d)); else if (dp) chips.push(`<span class="chip c" style="--c:${c}">${esc(dp.nome)}</span>`);
   if (d) {
     chips.push(d.tipo === 'diaria' ? `<span class="chip">${ic('repetir', 'xs')} ${esc(diasTxt(d.dias_semana))}</span>` : `<span class="chip ${!ex && d.prazo && d.prazo < h ? 'red' : ''}">${ic('cal', 'xs')} ${d.prazo ? 'Prazo: ' + esc(prazoTxt(d.prazo)) : 'Sem prazo'}</span>`);
     if (d.prioridade !== 'normal') chips.push(`<span class="chip ${d.prioridade === 'urgente' ? 'red' : 'orange'}">${d.prioridade === 'urgente' ? 'Urgente' : 'Prioridade alta'}</span>`);
@@ -720,7 +725,7 @@ async function enviarMsg() {
 function vDemandas() {
   const t = S.f.dt || 'diaria', fdep = S.f.dd && dep(S.f.dd) ? S.f.dd : null, q = slug(S.f.dq || '').replace(/\./g, ' ');
   let l = S.dem.filter(d => t === 'arq' ? !d.ativa : d.ativa && d.tipo === t);
-  if (fdep) l = l.filter(d => d.departamento_id === fdep);
+  if (fdep) l = l.filter(d => temDep(d, fdep));
   if (q) l = l.filter(d => slug(d.titulo + ' ' + (d.local || '') + ' ' + (d.descricao || '')).replace(/\./g, ' ').includes(q));
   l.sort((a, b) => t === 'especifica' ? (!!feito(a.id, 'unica') - !!feito(b.id, 'unica')) || String(a.prazo || '9').localeCompare(String(b.prazo || '9')) || a.titulo.localeCompare(b.titulo) : a.titulo.localeCompare(b.titulo));
   const ativas = S.dem.filter(d => d.ativa);
@@ -738,6 +743,7 @@ function vDemandas() {
     if (d.horario) sub.push(`${ic('relogio', 'xs')} ${esc(d.horario)}`);
     if (d.local) sub.push(`${ic('pin', 'xs')} ${esc(d.local)}`);
     if (d.responsavel) sub.push(`${ic('pessoa', 'xs')} ${esc(primeiroNome(nomeDe(d.responsavel)))}`);
+    if (depsDe(d).length > 1) sub.push(`<span class="chip">${depsDe(d).length === S.deps.length ? 'Todos os departamentos' : depsDe(d).map(id => dep(id).nome).join(' + ')}</span>`);
     if (d.exige_foto) sub.push(ic('camera', 'xs'));
     if (d.prioridade !== 'normal') sub.push(`<span class="chip ${d.prioridade === 'urgente' ? 'red' : 'orange'}">${d.prioridade === 'urgente' ? 'Urgente' : 'Alta'}</span>`);
     return `<button class="row" style="--ind:32px" onclick="${d.tipo === 'especifica' || !d.ativa ? `abrirItem('${d.id}','${d.tipo === 'diaria' ? hoje() : 'unica'}')` : `formDemanda('${d.id}')`}"><span class="bar" style="background:${corDep(d.departamento_id)}"></span><span class="grow"><div class="t1">${esc(d.titulo)}</div><div class="t2">${sub.join('')}</div></span><span class="chev">${ic('chev', 's')}</span></button>`;
@@ -749,18 +755,22 @@ function vDemandas() {
 function formDemanda(id, copia) {
   if (!S.deps.length) { toast('Crie um departamento primeiro.'); S.tab = 'equipe'; S.f.eq = 'deps'; fecharFolha(); render(); return; }
   const d = id ? dem(id) : null;
-  S.fd = d ? JSON.parse(JSON.stringify(d)) : copia || { titulo: '', descricao: '', departamento_id: (S.f.dd && dep(S.f.dd) ? S.f.dd : S.f.hdep && dep(S.f.hdep) ? S.f.hdep : S.deps[0].id), tipo: S.f.dt === 'especifica' ? 'especifica' : 'diaria', dias_semana: [1, 2, 3, 4, 5], prazo: null, horario: '', local: '', prioridade: 'normal', responsavel: null, exige_foto: false, ativa: true };
+  S.fd = d ? JSON.parse(JSON.stringify(d)) : copia || { titulo: '', descricao: '', departamento_id: (S.f.dd && dep(S.f.dd) ? S.f.dd : S.f.hdep && dep(S.f.hdep) ? S.f.hdep : S.deps[0].id), departamentos: null, tipo: S.f.dt === 'especifica' ? 'especifica' : 'diaria', dias_semana: [1, 2, 3, 4, 5], prazo: null, horario: '', local: '', prioridade: 'normal', responsavel: null, exige_foto: false, ativa: true };
+  S.fd.departamentos = depsDe(S.fd).length ? [...depsDe(S.fd)] : [S.fd.departamento_id];
   S.conversa = null; S.rasc = null;
   folha({ titulo: d ? 'Editar demanda' : 'Nova demanda', tipo: 'demanda', esq: ['Cancelar', 'fecharFolha()'], dir: [d ? 'Salvar' : 'Criar', 'salvarDemanda()'], corpo: corpoFD() });
   if (!d) setTimeout(() => { const i = $('#fdT'); if (i && matchMedia('(min-width:700px)').matches) i.focus(); }, 350);
 }
 function corpoFD() {
-  const f = S.fd, pessoas = S.perfis.filter(p => p.ativo).sort((a, b) => ((b.departamentos || []).includes(f.departamento_id) - (a.departamentos || []).includes(f.departamento_id)) || a.nome.localeCompare(b.nome));
+  const f = S.fd, doDep = p => (p.departamentos || []).some(x => f.departamentos.includes(x));
+  const pessoas = S.perfis.filter(p => p.ativo).sort((a, b) => (doDep(b) - doDep(a)) || a.nome.localeCompare(b.nome));
+  const todosDeps = S.deps.length > 1 && S.deps.every(d => f.departamentos.includes(d.id));
   const locais = [...new Set([...LOCAIS, ...S.dem.map(d => d.local).filter(Boolean)])];
   let h = `<div class="cap">Demanda</div><div class="grp">
     <div class="fld"><input id="fdT" class="l" maxlength="160" placeholder="Título (ex.: Limpar banheiros do 3º andar)" value="${esc(f.titulo)}" oninput="S.fd.titulo=this.value"></div>
     <div class="fld"><textarea placeholder="Detalhes, passo a passo ou materiais (opcional)" oninput="S.fd.descricao=this.value">${esc(f.descricao || '')}</textarea></div></div>
-    <div class="cap">Departamento</div><div class="grp"><div class="fld blk"><div class="pills wrap">${S.deps.map(d => `<button class="pill ${f.departamento_id === d.id ? 'on' : ''}" style="--c:${d.cor}" onclick="fdSet('departamento_id','${d.id}')">${esc(d.nome)}</button>`).join('')}</div></div></div>
+    <div class="cap">Departamentos</div><div class="grp"><div class="fld blk"><div class="pills wrap">${S.deps.map(d => `<button class="pill ${f.departamentos.includes(d.id) ? 'on' : ''}" style="--c:${d.cor}" onclick="fdDep('${d.id}')">${f.departamentos.includes(d.id) ? ic('check', 'xs') : ''}${esc(d.nome)}</button>`).join('')}${S.deps.length > 1 ? `<button class="pill ${todosDeps ? 'on' : ''}" onclick="fdTodos()">${todosDeps ? ic('check', 'xs') : ''}Todos</button>` : ''}</div></div></div>
+    <p class="note">${f.departamentos.length > 1 ? 'Aparece para as pessoas de todos os departamentos marcados. Quem concluir primeiro resolve.' : 'Toque em mais de um departamento para que todos possam resolver.'}</p>
     <div class="cap">Frequência</div>${seg([['diaria', 'Diária (repete)'], ['especifica', 'Específica (uma vez)']], f.tipo, "fdSet.bind(null,'tipo')").replace('class="seg"', 'class="seg" style="margin:0 0 10px"')}`;
   if (f.tipo === 'diaria') {
     h += `<div class="grp"><div class="fld blk"><div class="days">${SEM1.map((l, i) => `<button class="${f.dias_semana.includes(i) ? 'on' : ''}" onclick="fdDia(${i})" aria-label="${SEM[i]}">${l}</button>`).join('')}</div>
@@ -774,7 +784,7 @@ function corpoFD() {
       <div class="fld"><label>Horário</label><input placeholder="Ex.: até 10h" value="${esc(f.horario || '')}" oninput="S.fd.horario=this.value"></div></div>
     <datalist id="dlLocais">${locais.map(l => `<option value="${esc(l)}">`).join('')}</datalist>
     <div class="cap">Quem faz</div><div class="grp"><div class="fld"><label>Responsável</label><select onchange="S.fd.responsavel=this.value||null">
-      <option value="">Qualquer pessoa do departamento</option>${pessoas.map(p => `<option value="${p.id}" ${f.responsavel === p.id ? 'selected' : ''}>${esc(p.nome)}${(p.departamentos || []).includes(f.departamento_id) ? '' : ' (outro depto.)'}</option>`).join('')}</select></div></div>
+      <option value="">${f.departamentos.length > 1 ? 'Qualquer pessoa dos departamentos' : 'Qualquer pessoa do departamento'}</option>${pessoas.map(p => `<option value="${p.id}" ${f.responsavel === p.id ? 'selected' : ''}>${esc(p.nome)}${doDep(p) ? '' : ' (outro depto.)'}</option>`).join('')}</select></div></div>
     <p class="note">Com responsável, só essa pessoa vê a demanda.</p>
     <div class="cap">Prioridade</div>${seg([['normal', 'Normal'], ['alta', 'Alta'], ['urgente', 'Urgente']], f.prioridade, "fdSet.bind(null,'prioridade')").replace('class="seg"', 'class="seg" style="margin:0"')}
     <div class="grp" style="margin-top:22px"><div class="fld"><label>Exigir foto para concluir</label><label class="sw"><input type="checkbox" ${f.exige_foto ? 'checked' : ''} onchange="S.fd.exige_foto=this.checked"><span></span></label></div></div>`;
@@ -788,13 +798,26 @@ function corpoFD() {
   return h + '<div style="height:20px"></div>';
 }
 function fdSet(k, v) { S.fd[k] = v; corpoFolha(corpoFD()); }
+function fdDep(id) {
+  const a = S.fd.departamentos;
+  if (a.includes(id)) { if (a.length === 1) return toast('Marque pelo menos um departamento.'); S.fd.departamentos = a.filter(x => x !== id); }
+  else S.fd.departamentos = [...a, id];
+  corpoFolha(corpoFD());
+}
+function fdTodos() {
+  const todos = S.deps.every(d => S.fd.departamentos.includes(d.id));
+  S.fd.departamentos = todos ? [S.fd.departamentos[0]] : S.deps.map(d => d.id);
+  corpoFolha(corpoFD());
+}
 function fdDia(i) { const a = S.fd.dias_semana; S.fd.dias_semana = a.includes(i) ? a.filter(x => x !== i) : [...a, i].sort(); corpoFolha(corpoFD()); }
 async function salvarDemanda() {
   const f = S.fd;
   f.titulo = (f.titulo || '').trim();
   if (!f.titulo) { toast('Dê um título para a demanda.'); const i = $('#fdT'); if (i) i.focus(); return; }
   if (f.tipo === 'diaria' && !f.dias_semana.length) return toast('Escolha pelo menos um dia da semana.');
-  const dados = { titulo: f.titulo, descricao: (f.descricao || '').trim() || null, departamento_id: f.departamento_id, tipo: f.tipo, dias_semana: f.tipo === 'diaria' ? f.dias_semana : [], prazo: f.tipo === 'especifica' ? f.prazo || null : null, horario: (f.horario || '').trim() || null, local: (f.local || '').trim() || null, prioridade: f.prioridade, responsavel: f.responsavel || null, exige_foto: !!f.exige_foto };
+  const deps = S.deps.filter(d => f.departamentos.includes(d.id)).map(d => d.id);
+  if (!deps.length) return toast('Marque pelo menos um departamento.');
+  const dados = { titulo: f.titulo, descricao: (f.descricao || '').trim() || null, departamento_id: deps[0], departamentos: deps, tipo: f.tipo, dias_semana: f.tipo === 'diaria' ? f.dias_semana : [], prazo: f.tipo === 'especifica' ? f.prazo || null : null, horario: (f.horario || '').trim() || null, local: (f.local || '').trim() || null, prioridade: f.prioridade, responsavel: f.responsavel || null, exige_foto: !!f.exige_foto };
   const fim = ocupado($('#dirBtn'));
   const { error } = f.id ? await S.sb.from('dm_demandas').update(dados).eq('id', f.id) : await S.sb.from('dm_demandas').insert(dados);
   fim();
@@ -914,7 +937,7 @@ function vEquipe() {
     html += `<p class="note">Endereço para a equipe: <b>${esc(urlApp())}</b></p>`;
   } else {
     html += S.deps.length ? `<div class="list">${S.deps.map(d => {
-      const nd = S.dem.filter(x => x.departamento_id === d.id && x.ativa).length, np = S.perfis.filter(p => p.ativo && (p.departamentos || []).includes(d.id)).length;
+      const nd = S.dem.filter(x => temDep(x, d.id) && x.ativa).length, np = S.perfis.filter(p => p.ativo && (p.departamentos || []).includes(d.id)).length;
       return `<button class="row" style="--ind:42px" onclick="formDep('${d.id}')"><span class="dot" style="background:${d.cor};width:14px;height:14px"></span><span class="grow"><div class="t1">${esc(d.nome)}</div><div class="t2">${plural(nd, 'demanda ativa', 'demandas ativas')} · ${plural(np, 'pessoa', 'pessoas')}</div></span><span class="chev">${ic('chev', 's')}</span></button>`;
     }).join('')}</div>` : vazio('tag', 'Nenhum departamento', 'Crie departamentos como Limpeza, Manutenção e Recepção.');
   }

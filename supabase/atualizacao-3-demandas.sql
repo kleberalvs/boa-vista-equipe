@@ -49,6 +49,9 @@ create table if not exists public.dm_demandas (
   criado_em       timestamptz not null default now(),
   atualizado_em   timestamptz not null default now()
 );
+-- Departamentos da demanda (pode ser mais de um); o departamento_id é o principal.
+alter table public.dm_demandas add column if not exists departamentos uuid[] not null default '{}';
+update public.dm_demandas set departamentos = array[departamento_id] where cardinality(departamentos) = 0;
 
 create table if not exists public.dm_execucoes (
   id              uuid primary key default gen_random_uuid(),
@@ -124,7 +127,7 @@ language sql stable security definer set search_path = public as $$
     select 1 from public.dm_demandas d
     where d.id = p_demanda and d.ativa and public.dm_eh_membro()
       and (d.responsavel = auth.uid()
-           or (d.responsavel is null and d.departamento_id = any(public.dm_meus_departamentos())))
+           or (d.responsavel is null and d.departamentos && public.dm_meus_departamentos()))
   )
 $$;
 
@@ -157,7 +160,7 @@ drop policy if exists dm_dem_ver on public.dm_demandas;
 create policy dm_dem_ver on public.dm_demandas for select to authenticated using (
   public.dm_eh_gestor() or (
     ativa and public.dm_eh_membro()
-    and (responsavel = auth.uid() or (responsavel is null and departamento_id = any(public.dm_meus_departamentos())))
+    and (responsavel = auth.uid() or (responsavel is null and departamentos && public.dm_meus_departamentos()))
   )
 );
 drop policy if exists dm_dem_gestor_ins on public.dm_demandas;
@@ -245,14 +248,34 @@ drop trigger if exists dm_execucoes_trava on public.dm_execucoes;
 create trigger dm_execucoes_trava before insert or update on public.dm_execucoes for each row execute function public.dm_execucoes_trava();
 
 create or replace function public.dm_demandas_toque() returns trigger
-language plpgsql as $$
+language plpgsql security definer set search_path = public as $$
 begin
   new.atualizado_em := now();
   if tg_op = 'UPDATE' then new.criado_em := old.criado_em; new.criado_por := old.criado_por; end if;
+  new.departamentos := coalesce(array_remove(new.departamentos, null), '{}');
+  if cardinality(new.departamentos) = 0 then
+    new.departamentos := array[new.departamento_id];
+  elsif not (new.departamento_id = any(new.departamentos)) then
+    new.departamento_id := new.departamentos[1];
+  end if;
+  if exists (select 1 from unnest(new.departamentos) x where not exists (select 1 from public.dm_departamentos d where d.id = x)) then
+    raise exception 'Departamento inválido.';
+  end if;
   return new;
 end $$;
 drop trigger if exists dm_demandas_toque on public.dm_demandas;
 create trigger dm_demandas_toque before insert or update on public.dm_demandas for each row execute function public.dm_demandas_toque();
+
+-- Ao excluir um departamento, ele sai da lista das demandas em que não é o principal.
+create or replace function public.dm_dep_remover() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  update public.dm_demandas set departamentos = array_remove(departamentos, old.id)
+  where old.id = any(departamentos) and departamento_id <> old.id;
+  return old;
+end $$;
+drop trigger if exists dm_dep_remover on public.dm_departamentos;
+create trigger dm_dep_remover before delete on public.dm_departamentos for each row execute function public.dm_dep_remover();
 
 -- ============ Primeiro acesso e gestão de usuários ============
 

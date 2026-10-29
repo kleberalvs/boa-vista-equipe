@@ -76,3 +76,9 @@ Repositório renomeado de `boa-vista-equipe` para `boavista`.
 - Demandas: https://kleberalvs.github.io/boavista/demandas/
 O endereço antigo deixa de funcionar; quem instalou o app precisa instalar de novo pelo endereço novo. Links públicos de visualização criados antes precisam ser recriados (Compartilhar → Criar link).
 No Supabase (Authentication → URL Configuration), o Site URL e as Redirect URLs passam a ser o endereço novo.
+
+## Vários departamentos por demanda e fotos menores (29/10/2026, versão 2026.10.29-5)
+- Uma demanda pode ter um ou vários departamentos (botão "Todos" marca todos). Aparece para as pessoas de qualquer departamento marcado; quem concluir primeiro resolve.
+- Banco: `supabase/atualizacao-4-varios-departamentos.sql` (coluna `dm_demandas.departamentos uuid[]`; `departamento_id` continua como o principal). A `atualizacao-3-demandas.sql` já inclui a mesma mudança, então rodar a 3 de novo não desfaz a 4.
+- Fotos: reduzidas no celular para no máximo 1280 px e qualidade 70% antes do envio (antes 1600 px e 72%), cerca de 150–250 KB por foto.
+- Corrigido o botão "Exigir foto para concluir", que aparecia esticado.
