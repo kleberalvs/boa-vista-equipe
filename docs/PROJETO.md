@@ -90,7 +90,7 @@ No Supabase (Authentication → URL Configuration), o Site URL e as Redirect URL
 - Também nesta versão: arrastar a janela para baixo fecha; concluir funciona na aba anônima do Safari.
 
 ## Notificações no celular (29/10/2026, versão 2026.10.29-9)
-- Gestor recebe "Demanda concluída" (quem, qual, fotos, observação) e "Novo feedback". Colaborador recebe "O gestor respondeu seu feedback". Tocar abre o item no app (`#d=<demanda>~<dia>` ou `#fb=<feedback>`).
+- Colaboradores recebem "Nova demanda" (responsável definido: só ele; senão, todos os ativos dos departamentos marcados). Gestor recebe "Demanda concluída" (quem, qual, fotos, observação) e "Novo feedback". Colaborador recebe "O gestor respondeu seu feedback". Tocar abre o item no app (`#d=<demanda>~<dia>` ou `#fb=<feedback>`).
 - Ativar: Perfil → Ativar notificações (ou o aviso "Receba avisos no celular" no Hoje do gestor). No iPhone só funciona com o app adicionado à Tela de Início (iOS 16.4+).
 - Como funciona: Web Push (padrão dos navegadores). Inscrições em `dm_push`; gatilhos em `dm_execucoes` (inserção) e `dm_feedbacks` (novo ou respondido) chamam a Edge Function `notificar` via pg_net; a função envia com chaves VAPID e apaga inscrições vencidas.
 - Banco: `supabase/atualizacao-6-notificacoes.sql`. Endereço da função e senha de chamada ficam em `dm_config` (gravados à parte, fora do GitHub).

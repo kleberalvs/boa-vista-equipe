@@ -2,7 +2,7 @@
 -- Cole este arquivo inteiro em "SQL Editor" no Supabase e clique em Run. Pode executar mais de uma vez sem problema.
 --
 -- Como funciona: cada aparelho que ativa as notificações fica guardado em dm_push.
--- Quando uma demanda é concluída ou chega/é respondido um feedback, o banco chama a função "notificar"
+-- Quando uma demanda é criada ou concluída, ou chega/é respondido um feedback, o banco chama a função "notificar"
 -- (Edge Function do Supabase), que envia a notificação para os aparelhos certos.
 -- O endereço da função e a senha de chamada ficam em dm_config (fechada: ninguém lê pelo app).
 -- Esses valores são gravados à parte (push_url, push_segredo e push_chave = chave anon do config.js).
@@ -67,7 +67,7 @@ begin
     if v_url is null or v_seg is null then return new; end if;
     v_new := to_jsonb(new);
     v_old := case when tg_op = 'UPDATE' then to_jsonb(old) end;
-    if tg_table_name = 'dm_execucoes' and tg_op <> 'INSERT' then return new; end if;
+    if tg_table_name in ('dm_execucoes', 'dm_demandas') and tg_op <> 'INSERT' then return new; end if;
     if tg_table_name = 'dm_feedbacks' and tg_op = 'UPDATE'
        and (v_new->>'resposta' is null or v_new->>'resposta' is not distinct from v_old->>'resposta') then return new; end if;
     perform net.http_post(
@@ -87,6 +87,9 @@ revoke all on function public.dm_notificar() from public, anon, authenticated;
 drop trigger if exists dm_notificar_execucao on public.dm_execucoes;
 create trigger dm_notificar_execucao after insert on public.dm_execucoes
   for each row execute function public.dm_notificar();
+drop trigger if exists dm_notificar_demanda on public.dm_demandas;
+create trigger dm_notificar_demanda after insert on public.dm_demandas
+  for each row execute function public.dm_notificar();
 drop trigger if exists dm_notificar_feedback on public.dm_feedbacks;
 create trigger dm_notificar_feedback after insert or update of resposta on public.dm_feedbacks
   for each row execute function public.dm_notificar();
@@ -98,6 +101,7 @@ select case
    and exists (select 1 from pg_extension where extname = 'pg_net')
    and exists (select 1 from pg_trigger where tgname = 'dm_notificar_execucao')
    and exists (select 1 from pg_trigger where tgname = 'dm_notificar_feedback')
+   and exists (select 1 from pg_trigger where tgname = 'dm_notificar_demanda')
   then 'Tudo certo: notificações preparadas no banco.' ||
        case when exists (select 1 from public.dm_config where chave = 'push_segredo')
             then '' else ' Falta gravar o endereço e a senha da função (passo seguinte).' end

@@ -1,5 +1,5 @@
 // Boa Vista Corporate · Demandas · função "notificar" (Supabase Edge Function)
-// Recebe do banco (gatilhos da atualização 6) cada conclusão e feedback e envia a notificação
+// Recebe do banco (gatilhos da atualização 6) cada demanda nova, conclusão e feedback e envia a notificação
 // para os aparelhos inscritos. Segredos (Edge Functions → Secrets): VAPID_PUBLIC, VAPID_PRIVATE, DM_SEGREDO.
 // SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY já existem automaticamente.
 import webpush from "npm:web-push@3.6.7";
@@ -28,7 +28,26 @@ Deno.serve(async (req) => {
   let alvos: string[] = [];
   let msg: { titulo: string; corpo: string; url: string; tag: string } | null = null;
 
-  if (tabela === "dm_execucoes" && tipo === "INSERT" && !r.reaberta_em) {
+  if (tabela === "dm_demandas" && tipo === "INSERT" && r.ativa !== false) {
+    // responsável definido: só ele; senão, todos os ativos dos departamentos marcados (menos quem criou)
+    const deps: string[] = (r.departamentos?.length ? r.departamentos : [r.departamento_id]).filter(Boolean);
+    if (r.responsavel) alvos = r.responsavel === r.criado_por ? [] : [r.responsavel];
+    else alvos = ((await sb.from("dm_perfis").select("id,departamentos").eq("ativo", true)).data ?? [])
+      .filter((p: { id: string; departamentos: string[] | null }) => p.id !== r.criado_por && (p.departamentos ?? []).some((d) => deps.includes(d)))
+      .map((p: { id: string }) => p.id);
+    const SEM = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const dias: number[] = [...(r.dias_semana ?? [])].sort();
+    const quando = r.tipo === "diaria"
+      ? (dias.join() === "1,2,3,4,5" ? "Seg a Sex" : dias.length === 7 ? "Todos os dias" : dias.map((d) => SEM[d]).join(", "))
+      : r.prazo ? `Prazo ${r.prazo.slice(8, 10)}/${r.prazo.slice(5, 7)}` : "";
+    const hoje = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Recife" });
+    msg = {
+      titulo: `Nova demanda${r.prioridade === "urgente" ? " · Urgente" : r.prioridade === "alta" ? " · Prioridade alta" : ""}`,
+      corpo: [corta(r.titulo ?? "", 90), r.local, r.horario, quando].filter(Boolean).join(" · "),
+      url: `${APP}#d=${r.id}~${r.tipo === "diaria" ? hoje : "unica"}`,
+      tag: `dem-${r.id}`,
+    };
+  } else if (tabela === "dm_execucoes" && tipo === "INSERT" && !r.reaberta_em) {
     alvos = await gestores(r.concluida_por);
     const n = (r.fotos ?? []).length;
     msg = {

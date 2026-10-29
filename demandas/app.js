@@ -4,7 +4,7 @@
    Dados e login: Supabase (mesmo projeto do painel de Colaboradores). */
 'use strict';
 
-const APPV = '2026.10.29-9';
+const APPV = '2026.10.29-10';
 const DOMINIO = '@demandas.bvc.app';
 const BUCKET = 'demandas-fotos';
 const VAPID = 'BCTPmnPt7iJP_eJGL5fBUFuyBb9gcxdSXONE6Zwq1OWuyYGHQ5tmPVcRDn6rP1ObkYDnxcXeA4MlC88DL-sAmX4';   // chave pública das notificações (a privada fica só no Supabase)
@@ -562,7 +562,7 @@ function vHojeColab() {
   const pend = its.filter(i => !i.ex && !i.futura), prox = its.filter(i => i.futura), feitas = its.filter(i => i.ex);
   const multi = ((S.me && S.me.departamentos) || []).length > 1 && new Set(its.map(i => depsDe(i.d).find(x => S.me.departamentos.includes(x)) || i.d.departamento_id)).size > 1;
   const msg = !r.total ? 'Nenhuma demanda prevista para hoje.' : r.feitas === r.total ? 'Tudo concluído. Ótimo trabalho!' : `${plural(r.total - r.feitas, 'demanda pendente', 'demandas pendentes')} de ${r.total}${r.atrasadas ? ` · ${r.atrasadas} atrasada${r.atrasadas > 1 ? 's' : ''}` : ''}`;
-  let html = cab('Hoje', fmtLonga(h));
+  let html = cab('Hoje', fmtLonga(h)) + avisoPush();
   html += `<div class="card hero">${anel(r.feitas, r.total)}<div><div class="big">${saudacao()}, ${esc(primeiroNome(S.me.nome))}</div><div class="muted">${esc(msg)}</div></div></div><div style="height:18px"></div>`;
   html += seg([['fazer', `A fazer${pend.length ? ' (' + pend.length + ')' : ''}`], ['feitas', `Concluídas${feitas.length ? ' (' + feitas.length + ')' : ''}`]], aba, "filtro.bind(null,'hc')");
   if (aba === 'fazer') {
@@ -1329,7 +1329,7 @@ async function ativarNotificacoes() {
     const sub = (await r.pushManager.getSubscription()) || await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID) });
     await registrarPush(sub);
     try { localStorage.setItem('dm_push_aviso', 'fechado'); } catch (x) { }
-    toast(gestor() ? 'Pronto! Você será avisado de conclusões e feedbacks.' : 'Pronto! Você será avisado quando o gestor responder.');
+    toast(gestor() ? 'Pronto! Você será avisado de conclusões e feedbacks.' : 'Pronto! Você será avisado de novas demandas e respostas.');
   } catch (x) { toast(/dm_push_registrar/.test(String(x && x.message)) ? 'Falta ativar as notificações no banco: rode a atualização 6 no Supabase.' : 'Não foi possível ativar: ' + erroTxt(x)); }
   atualizarEstadoPush();
 }
@@ -1342,25 +1342,28 @@ async function revalidarPush() {   // mantém o aparelho ligado à pessoa certa 
   try { if (Notification.permission !== 'granted') return; const r = await swPronto(), sub = r && await r.pushManager.getSubscription(); if (sub) await registrarPush(sub); } catch (x) { }
 }
 function avisoPush() {
-  if (!gestor() || !['inativo', 'instalar'].includes(S.push)) return '';
+  if (!['inativo', 'instalar'].includes(S.push)) return '';
   try { if (localStorage.getItem('dm_push_aviso') === 'fechado') return ''; } catch (x) { }
   return `<div class="card" style="display:flex;gap:12px;align-items:center;padding:14px 16px;margin-bottom:14px"><span style="color:var(--blue)">${ic('sino')}</span>
-    <div style="flex:1"><b style="font-size:15px">Receba avisos no celular</b><div class="muted small">${S.push === 'instalar' ? 'No iPhone, adicione o app à Tela de Início para receber notificações.' : 'Demandas concluídas e feedbacks novos, mesmo com o app fechado.'}</div>
+    <div style="flex:1"><b style="font-size:15px">Receba avisos no celular</b><div class="muted small">${S.push === 'instalar' ? 'No iPhone, adicione o app à Tela de Início para receber notificações.' : gestor() ? 'Demandas concluídas e feedbacks novos, mesmo com o app fechado.' : 'Novas demandas e respostas do gestor, mesmo com o app fechado.'}</div>
     <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" onclick="ativarNotificacoes()">${S.push === 'instalar' ? 'Como instalar' : 'Ativar'}</button><button class="btn sm tint" onclick="try{localStorage.setItem('dm_push_aviso','fechado')}catch(e){};render()">Agora não</button></div></div></div>`;
 }
 const linhaPush = () => {
   const e = S.push || 'inativo';
   const txt = { ativo: 'Notificações ativadas', inativo: 'Ativar notificações', negado: 'Notificações bloqueadas', instalar: 'Ativar notificações', sem: 'Notificações indisponíveis' }[e];
-  const sub = { ativo: 'Toque para desativar neste aparelho', negado: 'Libere nos ajustes do celular', instalar: 'Primeiro adicione o app à Tela de Início', sem: 'Este navegador não suporta', inativo: gestor() ? 'Conclusões e feedbacks, com o app fechado' : 'Respostas do gestor, com o app fechado' }[e];
+  const sub = { ativo: 'Toque para desativar neste aparelho', negado: 'Libere nos ajustes do celular', instalar: 'Primeiro adicione o app à Tela de Início', sem: 'Este navegador não suporta', inativo: gestor() ? 'Conclusões e feedbacks, com o app fechado' : 'Novas demandas e respostas do gestor' }[e];
   return `<button class="row tap" onclick="${e === 'ativo' ? 'desativarNotificacoes()' : 'ativarNotificacoes()'}"><span style="color:${e === 'ativo' ? 'var(--green)' : 'var(--blue)'}">${ic('sino')}</span><span class="grow"><div class="t1">${txt}</div><div class="t2">${sub}</div></span>${e === 'ativo' ? `<span style="color:var(--green)">${ic('check', 's')}</span>` : `<span class="chev">${ic('chev', 's')}</span>`}</button>`;
 };
 /* abrir direto o que a notificação mostrou: #d=<demanda>~<dia> ou #fb=<feedback> */
-function abrirDoLink() {
+function abrirDoLink(ultima) {
   const h = decodeURIComponent(location.hash || ''); if (!S.montado || !h) return;
-  let m;
-  if ((m = h.match(/^#d=([0-9a-f-]{36})~(unica|\d{4}-\d{2}-\d{2})$/))) { if (dem(m[1]) || S.exe.some(e => e.demanda_id === m[1])) { const ex = S.exe.find(e => e.demanda_id === m[1] && e.ref === m[2] && !e.reaberta_em); abrirItem(m[1], m[2], ex); } }
-  else if ((m = h.match(/^#fb=([0-9a-f-]{36})$/))) { ir('feedback'); if (S.fb.some(f => f.id === m[1])) abrirFb(m[1]); }
-  else return;
+  let m, achou = false;
+  if ((m = h.match(/^#d=([0-9a-f-]{36})~(unica|\d{4}-\d{2}-\d{2})$/))) {
+    if (dem(m[1]) || S.exe.some(e => e.demanda_id === m[1])) { achou = true; const ex = S.exe.find(e => e.demanda_id === m[1] && e.ref === m[2] && !e.reaberta_em); abrirItem(m[1], m[2], ex); }
+  } else if ((m = h.match(/^#fb=([0-9a-f-]{36})$/))) {
+    if (S.fb.some(f => f.id === m[1])) { achou = true; ir('feedback'); abrirFb(m[1]); }
+  } else return;
+  if (!achou && !ultima) { carregar().then(() => { render(); abrirDoLink(true); }).catch(() => abrirDoLink(true)); return; }   // item novo: busca e tenta de novo
   history.replaceState(null, '', location.pathname + location.search);
 }
 addEventListener('hashchange', () => abrirDoLink());
