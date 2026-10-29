@@ -5,7 +5,7 @@
 -- Quando uma demanda é concluída ou chega/é respondido um feedback, o banco chama a função "notificar"
 -- (Edge Function do Supabase), que envia a notificação para os aparelhos certos.
 -- O endereço da função e a senha de chamada ficam em dm_config (fechada: ninguém lê pelo app).
--- Esses dois valores são gravados à parte (não ficam neste arquivo, que é público no GitHub).
+-- Esses valores são gravados à parte (push_url, push_segredo e push_chave = chave anon do config.js).
 
 create extension if not exists pg_net;
 
@@ -58,11 +58,12 @@ grant execute on function public.dm_push_remover(text) to authenticated;
 -- Avisa a função "notificar". Nunca atrapalha a gravação: se algo falhar, a conclusão/feedback é salva do mesmo jeito.
 create or replace function public.dm_notificar() returns trigger
 language plpgsql security definer set search_path = public, extensions as $$
-declare v_url text; v_seg text; v_new jsonb; v_old jsonb;
+declare v_url text; v_seg text; v_chave text; v_new jsonb; v_old jsonb;
 begin
   begin
     select valor into v_url from public.dm_config where chave = 'push_url';
     select valor into v_seg from public.dm_config where chave = 'push_segredo';
+    select valor into v_chave from public.dm_config where chave = 'push_chave';   -- chave pública (anon) do app: passa pela verificação de JWT do Supabase
     if v_url is null or v_seg is null then return new; end if;
     v_new := to_jsonb(new);
     v_old := case when tg_op = 'UPDATE' then to_jsonb(old) end;
@@ -71,7 +72,8 @@ begin
        and (v_new->>'resposta' is null or v_new->>'resposta' is not distinct from v_old->>'resposta') then return new; end if;
     perform net.http_post(
       url := v_url,
-      headers := jsonb_build_object('Content-Type', 'application/json', 'x-dm-segredo', v_seg),
+      headers := jsonb_build_object('Content-Type', 'application/json', 'x-dm-segredo', v_seg)
+                 || case when v_chave is not null then jsonb_build_object('Authorization', 'Bearer ' || v_chave, 'apikey', v_chave) else '{}'::jsonb end,
       body := jsonb_build_object('tabela', tg_table_name, 'tipo', tg_op, 'registro', v_new),
       timeout_milliseconds := 8000
     );
