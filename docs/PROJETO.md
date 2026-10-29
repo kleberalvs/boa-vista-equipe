@@ -5,8 +5,8 @@ Documento de memória do projeto: como o ambiente foi criado e como ele funciona
 ## O que é
 Aplicativo (PWA) de gestão da equipe do coworking Boa Vista Corporate, Recife/PE. Estilo Apple, funciona no computador, celular e tablet, instala como aplicativo, abre offline e sincroniza os aparelhos.
 
-- Site: https://kleberalvs.github.io/boa-vista-equipe/
-- Código: https://github.com/kleberalvs/boa-vista-equipe (público, sem dados pessoais)
+- Site: https://kleberalvs.github.io/boavista/
+- Código: https://github.com/kleberalvs/boavista (público, sem dados pessoais)
 - Dados e login: Supabase (projeto `yirauybpwrkhhubkvril`), tabelas `records` e `shares`
 
 ## Recursos
@@ -51,7 +51,7 @@ Servidor Supabase simulado + Chromium (Playwright) com dois aparelhos: login, si
 ## Demandas (29/10/2026, versão 2026.10.29-1)
 Seção de demandas operacionais da equipe (limpeza, manutenção, recepção, TI…), dentro do mesmo site e do mesmo banco.
 
-- Endereço: https://kleberalvs.github.io/boa-vista-equipe/demandas/ (instala como app próprio no celular dos colaboradores)
+- Endereço: https://kleberalvs.github.io/boavista/demandas/ (instala como app próprio no celular dos colaboradores)
 - No painel: menu **Demandas ↗** (computador) ou **Mais → Demandas da equipe** (celular). Mesma sessão: o proprietário entra uma vez só.
 - Nas Demandas, o proprietário volta pelo item **Painel da equipe ↗**.
 
@@ -69,3 +69,10 @@ Atenção: se rodar de novo `schema.sql` ou `atualizacao-2-compartilhamento.sql`
 Fotos: comprimidas no aparelho antes do envio; ficam no Storage do Supabase (1 GB no plano gratuito).
 Arquivos: `demandas/index.html`, `demandas/app.js`, `demandas/app.css`, `demandas/sw.js` (cache próprio `bvc-demandas-*`), `demandas/manifest.webmanifest`, `demandas/icons/`.
 Testes: SQL e regras de acesso num Postgres local; navegador (Playwright) com painel + Demandas: login único do proprietário, criação de acesso a partir da equipe do painel, colaboradora no celular vê só as demandas e é redirecionada ao tentar abrir o painel, todas as abas do painel sem erros.
+
+## Endereço novo (29/10/2026)
+Repositório renomeado de `boa-vista-equipe` para `boavista`.
+- Painel: https://kleberalvs.github.io/boavista/
+- Demandas: https://kleberalvs.github.io/boavista/demandas/
+O endereço antigo deixa de funcionar; quem instalou o app precisa instalar de novo pelo endereço novo. Links públicos de visualização criados antes precisam ser recriados (Compartilhar → Criar link).
+No Supabase (Authentication → URL Configuration), o Site URL e as Redirect URLs passam a ser o endereço novo.

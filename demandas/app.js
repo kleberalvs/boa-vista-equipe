@@ -4,7 +4,7 @@
    Dados e login: Supabase (mesmo projeto do painel de Colaboradores). */
 'use strict';
 
-const APPV = '2026.10.29-2';
+const APPV = '2026.10.29-3';
 const DOMINIO = '@demandas.bvc.app';
 const BUCKET = 'demandas-fotos';
 const CFG = window.BVC_CFG || {};
@@ -389,7 +389,7 @@ function telaCheia(html) {
   $('#app').innerHTML = `<div class="full"><div class="login setup">${html}</div></div>`;
 }
 function telaSetup(tipo) {
-  const sql = 'https://github.com/kleberalvs/boa-vista-equipe/blob/main/supabase/atualizacao-3-demandas.sql';
+  const sql = 'https://github.com/kleberalvs/boavista/blob/main/supabase/atualizacao-3-demandas.sql';
   telaCheia(tipo === 'config'
     ? `<div class="empty"><div class="ic" style="--c:var(--orange)">${ic('alerta')}</div><b>Configuração não encontrada</b>O arquivo config.js do painel não foi carregado.</div>`
     : `<div class="empty" style="padding-bottom:12px"><div class="ic">${ic('zap')}</div><b>Falta ativar o banco das demandas</b>Uma única vez, no Supabase:</div>

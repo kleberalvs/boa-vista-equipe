@@ -27,7 +27,7 @@ Tempo total: cerca de 30 minutos. Não precisa programar.
 
 ## Parte 2 · Publicar no GitHub
 
-1. Em **github.com**, clique em **New repository**. Nome: `boa-vista-equipe`. Marque **Public**. Clique em **Create repository**.
+1. Em **github.com**, clique em **New repository**. Nome: `boavista`. Marque **Public**. Clique em **Create repository**.
    O repositório precisa ser público para o GitHub Pages gratuito. Isso é seguro porque aqui só há o código do aplicativo, e os dados ficam no Supabase com login.
 2. Abra o arquivo `config.js` desta pasta em um editor de texto (Bloco de Notas serve), cole o **Project URL** e a **chave** entre as aspas e salve:
    ```js
@@ -39,7 +39,7 @@ Tempo total: cerca de 30 minutos. Não precisa programar.
 3. No repositório, clique em **uploading an existing file**. Arraste **todo o conteúdo** desta pasta (os arquivos e as pastas `css`, `js`, `vendor`, `assets`, `supabase`). Clique em **Commit changes**.
 4. Vá em **Settings** → **Pages**. Em **Build and deployment**, escolha **Source: Deploy from a branch**, **Branch: main**, pasta **/(root)** e clique em **Save**.
 5. Espere 1 a 2 minutos. O endereço do aplicativo aparece nessa mesma página, no formato
-   `https://SEU-USUARIO.github.io/boa-vista-equipe/`
+   `https://SEU-USUARIO.github.io/boavista/`
 
 ## Parte 3 · Primeiro acesso e dados
 
@@ -67,7 +67,7 @@ Tempo total: cerca de 30 minutos. Não precisa programar.
 Na tela de login, o botão **Esqueci minha senha** envia um link de redefinição para o e-mail digitado (só funciona para e-mails já cadastrados). Para o link voltar ao app certo:
 
 1. Supabase → **Authentication → URL Configuration**.
-2. Em **Site URL**, coloque `https://kleberalvs.github.io/boa-vista-equipe/`.
+2. Em **Site URL**, coloque `https://kleberalvs.github.io/boavista/`.
 3. Em **Redirect URLs**, adicione o mesmo endereço e salve.
 
 O Supabase gratuito limita o envio de e-mails (poucos por hora). Se o e-mail não chegar, confira o spam e aguarde.
