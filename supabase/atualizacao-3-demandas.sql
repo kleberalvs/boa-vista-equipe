@@ -87,6 +87,14 @@ create table if not exists public.dm_feedbacks (
   criado_em       timestamptz not null default now()
 );
 
+-- Proteção ligada já aqui: mesmo que o restante não rode, as tabelas ficam fechadas.
+alter table public.dm_departamentos enable row level security;
+alter table public.dm_perfis        enable row level security;
+alter table public.dm_demandas      enable row level security;
+alter table public.dm_execucoes     enable row level security;
+alter table public.dm_comentarios   enable row level security;
+alter table public.dm_feedbacks     enable row level security;
+
 -- ============ Quem é quem (usadas nas regras de acesso) ============
 
 create or replace function public.dm_eh_gestor() returns boolean
@@ -331,6 +339,12 @@ begin
   where id = p_id and exists (select 1 from public.dm_perfis where id = p_id and position('@' in login) = 0);
 end $$;
 
+revoke all on function public.dm_eh_gestor() from public, anon;
+revoke all on function public.dm_eh_membro() from public, anon;
+revoke all on function public.dm_sem_painel() from public, anon;
+revoke all on function public.dm_meus_departamentos() from public, anon;
+revoke all on function public.dm_pode_ver_demanda(uuid) from public, anon;
+grant execute on function public.dm_eh_gestor(), public.dm_eh_membro(), public.dm_sem_painel(), public.dm_meus_departamentos(), public.dm_pode_ver_demanda(uuid) to authenticated;
 revoke all on function public.dm_bootstrap() from public, anon;
 revoke all on function public.dm_criar_usuario(text, text, text, text, uuid[]) from public, anon;
 revoke all on function public.dm_redefinir_senha(uuid, text) from public, anon;
@@ -392,3 +406,23 @@ insert into public.dm_departamentos (nome, cor, ordem) values
   ('Recepção',   '#af52de', 3),
   ('TI',         '#007aff', 4)
 on conflict (nome) do nothing;
+
+-- ============ Ajuste de segurança do painel (aviso "Function Search Path Mutable") ============
+do $$
+begin
+  if to_regprocedure('public.touch_record()') is not null then
+    execute 'alter function public.touch_record() set search_path = public';
+  end if;
+end $$;
+
+-- ============ Conferência ============
+-- O resultado aparece embaixo: deve dizer "Tudo certo".
+select case
+  when (select count(*) from pg_tables where schemaname = 'public' and tablename like 'dm\_%' and rowsecurity) = 6
+   and (select count(*) from pg_policies where schemaname = 'public' and tablename like 'dm\_%') >= 18
+   and exists (select 1 from storage.buckets where id = 'demandas-fotos')
+   and exists (select 1 from pg_proc where proname = 'dm_criar_usuario')
+   and exists (select 1 from pg_policies where tablename = 'records' and qual like '%dm_sem_painel%')
+  then 'Tudo certo: Demandas instaladas e painel protegido.'
+  else 'Algo faltou: copie e rode o arquivo inteiro de novo.'
+end as resultado;
