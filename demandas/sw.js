@@ -1,5 +1,5 @@
 /* Service worker das Demandas: abre sem internet e, com internet, sempre busca a versão mais nova. */
-const VERSAO = '2026.10.29-8';
+const VERSAO = '2026.10.29-9';
 const CACHE = 'bvc-demandas-' + VERSAO;
 const ARQUIVOS = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/apple-touch-icon.png',
   '../config.js', '../vendor/supabase.js', '../assets/logo.png'];
@@ -21,4 +21,23 @@ self.addEventListener('fetch', e => {
   rede.catch(() => {});
   const lento = new Promise(ok => setTimeout(() => { if (Date.now() >= redeLenta) redeLenta = Date.now() + 30000; ok(null); }, Date.now() < redeLenta ? 300 : 3500));
   e.respondWith(Promise.race([rede.catch(() => null), lento]).then(res => res || caches.match(r, { ignoreSearch: true }).then(m => m || (r.mode === 'navigate' ? caches.match('index.html') : null)).then(m => m || rede)));
+});
+
+/* Notificações: mostra o aviso e, ao tocar, abre o app no item certo */
+self.addEventListener('push', e => {
+  let m = {};
+  try { m = e.data ? e.data.json() : {}; } catch (x) { m = { corpo: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(m.titulo || 'Demandas', {
+    body: m.corpo || '', icon: 'icons/icon-192.png', badge: 'icons/icon-192.png',
+    tag: m.tag || undefined, data: { url: m.url || './' }, lang: 'pt-BR'
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(ws => {
+    const w = ws.find(c => c.url.startsWith(self.registration.scope));
+    if (w) { w.postMessage({ tipo: 'abrir', url }); return w.focus(); }
+    return self.clients.openWindow(url);
+  }));
 });

@@ -4,9 +4,10 @@
    Dados e login: Supabase (mesmo projeto do painel de Colaboradores). */
 'use strict';
 
-const APPV = '2026.10.29-8';
+const APPV = '2026.10.29-9';
 const DOMINIO = '@demandas.bvc.app';
 const BUCKET = 'demandas-fotos';
+const VAPID = 'BCTPmnPt7iJP_eJGL5fBUFuyBb9gcxdSXONE6Zwq1OWuyYGHQ5tmPVcRDn6rP1ObkYDnxcXeA4MlC88DL-sAmX4';   // chave pública das notificações (a privada fica só no Supabase)
 const CFG = window.BVC_CFG || {};
 const TABELAS = ['dm_execucoes', 'dm_demandas', 'dm_feedbacks', 'dm_comentarios', 'dm_perfis', 'dm_departamentos'];
 const CORES = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#30b0c7', '#ff2d55', '#5856d6', '#a2845e', '#8e8e93'];
@@ -25,6 +26,7 @@ const S = {
 
 /* ---------------- ícones ---------------- */
 const P = {
+  sino: '<path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2.5h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
   hoje: '<circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.8 2.8L16.2 9.8"/>',
   lista: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.6" cy="6.5" r=".6"/><circle cx="4.6" cy="12" r=".6"/><circle cx="4.6" cy="17.5" r=".6"/>',
   hist: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5"/><path d="M3.5 3.5v5h5"/><path d="M12 7.5V12l3 2"/>',
@@ -467,6 +469,8 @@ function montar() {
   S.montado = true; tirarSplash();
   $('#app').innerHTML = '<aside id="side"></aside><main id="main"></main><nav id="tabbar" aria-label="Menu"></nav>';
   render();
+  atualizarEstadoPush(); revalidarPush();
+  setTimeout(abrirDoLink, 300);
 }
 function ir(t) {
   if (S.tab === t) { scrollTo({ top: 0, behavior: 'smooth' }); return; }
@@ -580,7 +584,7 @@ function vHojeGestor() {
   const pend = its.filter(i => !i.ex && !i.futura), feitas = its.filter(i => i.ex), prox = its.filter(i => i.futura);
   const novosFb = S.fb.filter(f => f.status === 'novo').length;
   const acts = `<button class="circ" onclick="mudarDia(-1)" aria-label="Dia anterior">${ic('chevL', 's')}</button><button class="circ" onclick="mudarDia(1)" aria-label="Próximo dia" ${eHoje ? 'disabled' : ''}>${ic('chev', 's')}</button><button class="circ blue" onclick="formDemanda()" aria-label="Nova demanda">${ic('mais', 's')}</button>`;
-  let html = cab(eHoje ? 'Hoje' : (D === addDias(h, -1) ? 'Ontem' : fmtCurta(D)), fmtLonga(D), acts);
+  let html = cab(eHoje ? 'Hoje' : (D === addDias(h, -1) ? 'Ontem' : fmtCurta(D)), fmtLonga(D), acts) + (eHoje ? avisoPush() : '');
   if (!eHoje) html += `<div style="margin:-6px 0 14px"><button class="pill" onclick="S.dia=null;render()">${ic('cal', 's')} Voltar para hoje</button></div>`;
   html += `<div class="card hero">${anel(r.feitas, r.total)}<div style="flex:1"><div class="big">${r.feitas} de ${r.total}</div><div class="muted">${eHoje ? 'demandas concluídas hoje' : 'demandas concluídas neste dia'}${r.atrasadas ? ` · <span style="color:var(--red)">${r.atrasadas} atrasada${r.atrasadas > 1 ? 's' : ''}</span>` : ''}</div>
     ${novosFb ? `<button class="chip blue" style="margin-top:8px" onclick="ir('feedback')">${ic('fb', 'xs')} ${plural(novosFb, 'feedback novo', 'feedbacks novos')}</button>` : ''}</div></div>`;
@@ -1234,6 +1238,7 @@ function abrirPerfil() {
       <div class="chips" style="justify-content:center;margin-top:10px"><span class="chip blue">${gestor() ? 'Gestor' : 'Colaborador'}</span>${(m.departamentos || []).map(id => dep(id)).filter(Boolean).map(d => `<span class="chip c" style="--c:${d.cor}">${esc(d.nome)}</span>`).join('')}</div></div>
     <div style="height:18px"></div><div class="list">
       ${m.login.includes('@') ? '' : `<button class="row tap" onclick="trocarSenha()"><span style="color:var(--blue)">${ic('chave')}</span><span class="grow t1">Trocar minha senha</span><span class="chev">${ic('chev', 's')}</span></button>`}
+      ${linhaPush()}
       <button class="row tap" onclick="instalar()"><span style="color:var(--blue)">${ic('baixar')}</span><span class="grow t1">Instalar como aplicativo</span><span class="chev">${ic('chev', 's')}</span></button>
       ${gestor() && m.login.includes('@') ? `<a class="row tap" href="../" style="color:inherit;text-decoration:none"><span style="color:var(--blue)">${ic('painel')}</span><span class="grow t1">Painel de Colaboradores</span><span class="chev">${ic('chev', 's')}</span></a>` : ''}
       <button class="row tap" onclick="sair()"><span style="color:var(--red)">${ic('sair')}</span><span class="grow t1" style="color:var(--red)">Sair</span></button></div>
@@ -1297,6 +1302,72 @@ async function instalar() {
   addEventListener('touchend', soltar); addEventListener('touchcancel', soltar);
 })();
 
+/* ---------------- notificações no celular ---------------- */
+const ehIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const instalado = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const b64u = s => { const p = '='.repeat((4 - s.length % 4) % 4), b = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+async function swPronto() { return Promise.race([navigator.serviceWorker.ready, sleep(8000).then(() => null)]); }
+async function estadoPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return ehIOS() && !instalado() ? 'instalar' : 'sem';
+  if (Notification.permission === 'denied') return 'negado';
+  try { const r = await swPronto(); const sub = r && await r.pushManager.getSubscription(); return sub && Notification.permission === 'granted' ? 'ativo' : 'inativo'; } catch (e) { return 'inativo'; }
+}
+async function atualizarEstadoPush() { const e = await estadoPush(); if (e !== S.push) { S.push = e; render(); if ($('#sheet').classList.contains('on') && S.folhaTipo === 'perfil') abrirPerfil(); } return e; }
+async function registrarPush(sub) {
+  const j = sub.toJSON();
+  const { error } = await S.sb.rpc('dm_push_registrar', { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_aparelho: (navigator.userAgentData && navigator.userAgentData.platform) || (ehIOS() ? 'iPhone/iPad' : navigator.platform || '') });
+  if (error) throw error;
+}
+async function ativarNotificacoes() {
+  const e = await estadoPush();
+  if (e === 'instalar') return instalar();
+  if (e === 'sem') return toast('Este navegador não recebe notificações.');
+  if (e === 'negado') return perguntar('Notificações bloqueadas', ehIOS() ? 'Libere em Ajustes › Notificações › Demandas e tente de novo.' : 'Libere as notificações deste site nas configurações do navegador (ícone ao lado do endereço) e tente de novo.', 'OK');
+  try {
+    if (await Notification.requestPermission() !== 'granted') { await atualizarEstadoPush(); return toast('Notificações não autorizadas.'); }
+    const r = await swPronto(); if (!r) throw new Error('O app ainda está carregando. Tente de novo em alguns segundos.');
+    const sub = (await r.pushManager.getSubscription()) || await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID) });
+    await registrarPush(sub);
+    try { localStorage.setItem('dm_push_aviso', 'fechado'); } catch (x) { }
+    toast(gestor() ? 'Pronto! Você será avisado de conclusões e feedbacks.' : 'Pronto! Você será avisado quando o gestor responder.');
+  } catch (x) { toast(/dm_push_registrar/.test(String(x && x.message)) ? 'Falta ativar as notificações no banco: rode a atualização 6 no Supabase.' : 'Não foi possível ativar: ' + erroTxt(x)); }
+  atualizarEstadoPush();
+}
+async function desativarNotificacoes() {
+  try { const r = await swPronto(), sub = r && await r.pushManager.getSubscription(); if (sub) { await S.sb.rpc('dm_push_remover', { p_endpoint: sub.endpoint }); await sub.unsubscribe(); } toast('Notificações desativadas neste aparelho.'); }
+  catch (x) { toast(erroTxt(x)); }
+  atualizarEstadoPush();
+}
+async function revalidarPush() {   // mantém o aparelho ligado à pessoa certa (ex.: celular compartilhado)
+  try { if (Notification.permission !== 'granted') return; const r = await swPronto(), sub = r && await r.pushManager.getSubscription(); if (sub) await registrarPush(sub); } catch (x) { }
+}
+function avisoPush() {
+  if (!gestor() || !['inativo', 'instalar'].includes(S.push)) return '';
+  try { if (localStorage.getItem('dm_push_aviso') === 'fechado') return ''; } catch (x) { }
+  return `<div class="card" style="display:flex;gap:12px;align-items:center;padding:14px 16px;margin-bottom:14px"><span style="color:var(--blue)">${ic('sino')}</span>
+    <div style="flex:1"><b style="font-size:15px">Receba avisos no celular</b><div class="muted small">${S.push === 'instalar' ? 'No iPhone, adicione o app à Tela de Início para receber notificações.' : 'Demandas concluídas e feedbacks novos, mesmo com o app fechado.'}</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" onclick="ativarNotificacoes()">${S.push === 'instalar' ? 'Como instalar' : 'Ativar'}</button><button class="btn sm tint" onclick="try{localStorage.setItem('dm_push_aviso','fechado')}catch(e){};render()">Agora não</button></div></div></div>`;
+}
+const linhaPush = () => {
+  const e = S.push || 'inativo';
+  const txt = { ativo: 'Notificações ativadas', inativo: 'Ativar notificações', negado: 'Notificações bloqueadas', instalar: 'Ativar notificações', sem: 'Notificações indisponíveis' }[e];
+  const sub = { ativo: 'Toque para desativar neste aparelho', negado: 'Libere nos ajustes do celular', instalar: 'Primeiro adicione o app à Tela de Início', sem: 'Este navegador não suporta', inativo: gestor() ? 'Conclusões e feedbacks, com o app fechado' : 'Respostas do gestor, com o app fechado' }[e];
+  return `<button class="row tap" onclick="${e === 'ativo' ? 'desativarNotificacoes()' : 'ativarNotificacoes()'}"><span style="color:${e === 'ativo' ? 'var(--green)' : 'var(--blue)'}">${ic('sino')}</span><span class="grow"><div class="t1">${txt}</div><div class="t2">${sub}</div></span>${e === 'ativo' ? `<span style="color:var(--green)">${ic('check', 's')}</span>` : `<span class="chev">${ic('chev', 's')}</span>`}</button>`;
+};
+/* abrir direto o que a notificação mostrou: #d=<demanda>~<dia> ou #fb=<feedback> */
+function abrirDoLink() {
+  const h = decodeURIComponent(location.hash || ''); if (!S.montado || !h) return;
+  let m;
+  if ((m = h.match(/^#d=([0-9a-f-]{36})~(unica|\d{4}-\d{2}-\d{2})$/))) { if (dem(m[1]) || S.exe.some(e => e.demanda_id === m[1])) { const ex = S.exe.find(e => e.demanda_id === m[1] && e.ref === m[2] && !e.reaberta_em); abrirItem(m[1], m[2], ex); } }
+  else if ((m = h.match(/^#fb=([0-9a-f-]{36})$/))) { ir('feedback'); if (S.fb.some(f => f.id === m[1])) abrirFb(m[1]); }
+  else return;
+  history.replaceState(null, '', location.pathname + location.search);
+}
+addEventListener('hashchange', () => abrirDoLink());
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => {
+  if (e.data && e.data.tipo === 'abrir' && e.data.url) { const u = new URL(e.data.url); if (u.hash) { history.replaceState(null, '', location.pathname + u.hash); abrirDoLink(); } }
+});
+
 /* ---------------- início ---------------- */
 addEventListener('scroll', topo, { passive: true });
 addEventListener('online', () => { render(); enviarFila(); recarregar(); });
@@ -1312,7 +1383,7 @@ document.addEventListener('visibilitychange', () => {
 });
 setInterval(() => { if (S.montado && diaAtual !== hoje()) { diaAtual = hoje(); S.dia = null; render(); } }, 60000);
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   const antes = navigator.serviceWorker.controller && /\/demandas\//.test(navigator.serviceWorker.controller.scriptURL);
   navigator.serviceWorker.register('sw.js').catch(() => { });
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (antes) toast('Nova versão disponível', { txt: 'Atualizar', fn: () => location.reload() }); });
