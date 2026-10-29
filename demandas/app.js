@@ -4,7 +4,7 @@
    Dados e login: Supabase (mesmo projeto do painel de Colaboradores). */
 'use strict';
 
-const APPV = '2026.10.29-1';
+const APPV = '2026.10.29-2';
 const DOMINIO = '@demandas.bvc.app';
 const BUCKET = 'demandas-fotos';
 const CFG = window.BVC_CFG || {};
@@ -486,7 +486,7 @@ function topo() { const t = $('#topbar'); if (t) t.classList.toggle('on', scroll
 const nomesDeps = ids => (ids || []).map(id => (dep(id) || {}).nome).filter(Boolean).join(', ');
 function cab(t, sub, acts = '') {
   S.titulo = t;
-  return `<div class="lt"><h1>${esc(t)}</h1><div class="acts">${acts}<button class="av me-btn" style="background:${corPessoa(S.me)}" onclick="abrirPerfil()" aria-label="Meu perfil">${esc(ini(S.me.nome))}</button></div></div>${sub ? `<p class="sub">${esc(sub)}</p>` : '<div style="height:14px"></div>'}`;
+  return `<img class="mlogo" src="../assets/logo.png" alt="Boa Vista Corporate"><div class="lt"><h1>${esc(t)}</h1><div class="acts">${acts}<button class="av me-btn" style="background:${corPessoa(S.me)}" onclick="abrirPerfil()" aria-label="Meu perfil">${esc(ini(S.me.nome))}</button></div></div>${sub ? `<p class="sub">${esc(sub)}</p>` : '<div style="height:14px"></div>'}`;
 }
 function barraRede() {
   if (!navigator.onLine) return `<div class="net">${ic('alerta', 's')} Sem internet${S.fila.length ? ` · ${plural(S.fila.length, 'conclusão aguardando', 'conclusões aguardando')} envio` : ' · mostrando os últimos dados'}</div>`;
