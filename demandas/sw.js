@@ -1,5 +1,5 @@
 /* Service worker das Demandas: abre sem internet e, com internet, sempre busca a versão mais nova. */
-const VERSAO = '2026.10.29-7';
+const VERSAO = '2026.10.29-8';
 const CACHE = 'bvc-demandas-' + VERSAO;
 const ARQUIVOS = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/apple-touch-icon.png',
   '../config.js', '../vendor/supabase.js', '../assets/logo.png'];

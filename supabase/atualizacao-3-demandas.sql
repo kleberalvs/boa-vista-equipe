@@ -66,6 +66,14 @@ create table if not exists public.dm_execucoes (
   unique (demanda_id, ref)
 );
 create index if not exists dm_execucoes_quando on public.dm_execucoes (concluida_em desc);
+-- Conclusões reabertas ficam guardadas (com as fotos); só uma conclusão ativa por demanda e dia.
+alter table public.dm_execucoes add column if not exists reaberta_em  timestamptz;
+alter table public.dm_execucoes add column if not exists reaberta_por uuid references public.dm_perfis(id) on delete set null;
+
+-- Só uma conclusão ATIVA por demanda e dia (as reabertas ficam guardadas ao lado).
+alter table public.dm_execucoes drop constraint if exists dm_execucoes_demanda_id_ref_key;
+create unique index if not exists dm_execucoes_ativa on public.dm_execucoes (demanda_id, ref) where reaberta_em is null;
+
 
 create table if not exists public.dm_comentarios (
   id          uuid primary key default gen_random_uuid(),
@@ -238,7 +246,13 @@ begin
     new.ref := old.ref;
     new.concluida_por := old.concluida_por;
     new.concluida_em := old.concluida_em;
+    if old.reaberta_em is not null then          -- reaberta continua reaberta
+      new.reaberta_em := old.reaberta_em; new.reaberta_por := old.reaberta_por;
+    elsif new.reaberta_em is not null then       -- quem reabriu e quando: sempre os reais
+      new.reaberta_em := now(); new.reaberta_por := auth.uid();
+    end if;
   else
+    new.reaberta_em := null; new.reaberta_por := null;
     -- conclusões feitas sem internet chegam depois: vale a hora real, dentro das últimas 72 h
     new.concluida_em := least(greatest(coalesce(new.concluida_em, now()), now() - interval '72 hours'), now());
   end if;

@@ -4,7 +4,7 @@
    Dados e login: Supabase (mesmo projeto do painel de Colaboradores). */
 'use strict';
 
-const APPV = '2026.10.29-7';
+const APPV = '2026.10.29-8';
 const DOMINIO = '@demandas.bvc.app';
 const BUCKET = 'demandas-fotos';
 const CFG = window.BVC_CFG || {};
@@ -115,6 +115,7 @@ function erroTxt(e) {
   if (/Invalid login credentials/i.test(m)) return 'Usuário ou senha incorretos.';
   if (/banned/i.test(m)) return 'Este acesso foi desativado. Fale com o gestor.';
   if (/Failed to fetch|NetworkError|Load failed|network|fetch/i.test(m)) return 'Sem conexão com a internet.';
+  if (/reaberta/i.test(m) && /does not exist|schema cache|could not find/i.test(m)) return 'Falta ativar "reabrir mantém as fotos" no banco: rode a atualização 5 no Supabase (supabase/atualizacao-5-reabrir-mantem-fotos.sql).';
   if (/departamentos/i.test(m) && /does not exist|schema cache|could not find/i.test(m)) return 'Falta ativar vários departamentos no banco: rode a atualização 4 no Supabase (supabase/atualizacao-4-varios-departamentos.sql).';
   if (/dm_demandas_departamento_id_fkey/i.test(m)) return 'Este departamento ainda tem demandas. Mova ou exclua as demandas antes.';
   if (/row-level security|permission denied/i.test(m)) return 'Você não tem permissão para isso.';
@@ -289,7 +290,7 @@ function fecharFoto() { $('#viewer').classList.remove('on'); VW = null; }
 /* ---------------- dados ---------------- */
 function indexar() {
   S.ex = {};
-  for (const e of S.exe) S.ex[e.demanda_id + '|' + e.ref] = e;
+  for (const e of S.exe) if (!e.reaberta_em) S.ex[e.demanda_id + '|' + e.ref] = e;
   S.me = S.user ? perfil(S.user.id) || S.me : null;
 }
 function salvarCache() {
@@ -637,7 +638,7 @@ function abrirExec(exId) {
 function atualizarItem() { const ta = $('#obsIn'); if (ta && S.rasc) S.rasc.obs = ta.value; corpoFolha(corpoItem()); }
 function corpoItem() {
   const { id, ref } = S.rasc, d = dem(id);
-  const ex = feito(id, ref) || (S.rasc.exHist && !S.exe.find(e => e.id === S.rasc.exHist.id) && !S.rasc.apagado ? S.rasc.exHist : null);
+  const ex = feito(id, ref) || (S.rasc.exHist && !S.rasc.exHist.reaberta_em && !S.exe.find(e => e.id === S.rasc.exHist.id) && !S.rasc.apagado ? S.rasc.exHist : null);
   const titulo = d ? d.titulo : (ex && ex.titulo) || 'Demanda';
   const depId = d ? d.departamento_id : ex && ex.departamento_id, dp = dep(depId), c = corDep(depId);
   const h = hoje();
@@ -678,6 +679,13 @@ function corpoItem() {
   } else {
     html += `<div style="height:16px"></div><div class="okbox wait">${ic('alerta', 's')} Não foi concluída neste dia.</div>`;
   }
+  const reabertas = [...S.exe, ...((S.hist && S.hist.l) || [])].filter((e, i, a) => e.reaberta_em && e.demanda_id === id && e.ref === ref && a.findIndex(x => x.id === e.id) === i)
+    .sort((a, b) => new Date(b.concluida_em) - new Date(a.concluida_em));
+  if (reabertas.length) {
+    html += `<div class="cap">Conclusões anteriores (reabertas)</div>` + reabertas.map(e => `<div class="card" style="padding:12px 14px;margin-bottom:10px">
+      <div class="t2" style="margin:0 0 8px">Concluída por ${esc(e.concluida_por === S.user.id ? 'você' : nomeDe(e.concluida_por))} em ${esc(fmtDataHora(e.concluida_em))} · reaberta${e.reaberta_por ? ' por ' + esc(e.reaberta_por === S.user.id ? 'você' : primeiroNome(nomeDe(e.reaberta_por))) : ''} em ${esc(fmtDataHora(e.reaberta_em))}</div>
+      ${(e.fotos || []).length ? `<div class="photos" data-gal style="margin:0">${e.fotos.map(f => `<button class="ph" onclick="verFoto(this)">${imgFoto(f)}</button>`).join('')}</div>` : '<span class="muted small">Sem fotos.</span>'}</div>`).join('');
+  }
   if (d) html += `<div class="cap">Conversa sobre esta demanda</div><div class="chat" id="chat">${htmlChat()}</div>
     <div class="composer"><textarea id="msgIn" rows="1" placeholder="Escreva uma mensagem…" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea><button onclick="enviarMsg()" aria-label="Enviar">${ic('enviar', 's')}</button></div>`;
   return html;
@@ -703,13 +711,14 @@ async function concluir() {
 async function desfazer() {
   const { id, ref } = S.rasc, ex = feito(id, ref) || S.rasc.exHist;
   if (!ex) return;
-  if (!(await perguntar(gestor() && ex.concluida_por !== S.user.id ? 'Reabrir esta demanda?' : 'Desfazer a conclusão?', 'As fotos e a observação desta conclusão serão apagadas.', gestor() && ex.concluida_por !== S.user.id ? 'Reabrir' : 'Desfazer', true))) return;
+  if (!(await perguntar(gestor() && ex.concluida_por !== S.user.id ? 'Reabrir esta demanda?' : 'Desfazer a conclusão?', ex._pend ? 'A conclusão ainda não enviada será descartada.' : 'A observação será apagada. As fotos ficam guardadas na demanda e no histórico, e a demanda volta a ficar pendente.', gestor() && ex.concluida_por !== S.user.id ? 'Reabrir' : 'Desfazer', true))) return;
   if (ex._pend) { await IDB.tirar(ex._fila); await lerFila(); render(); atualizarItem(); return toast('Conclusão desfeita'); }
-  const { error } = await S.sb.from('dm_execucoes').delete().eq('id', ex.id);
+  const mud = { reaberta_em: new Date().toISOString(), reaberta_por: S.user.id, observacao: null };
+  const { error } = await S.sb.from('dm_execucoes').update(mud).eq('id', ex.id);
   if (error) return toast(erroTxt(error));
-  if ((ex.fotos || []).length) S.sb.storage.from(BUCKET).remove(ex.fotos).catch(() => { });
-  S.exe = S.exe.filter(e => e.id !== ex.id); indexar(); S.rasc.apagado = true;
-  if (S.hist) S.hist.l = S.hist.l.filter(e => e.id !== ex.id);
+  S.exe.forEach(e => { if (e.id === ex.id) Object.assign(e, mud); }); indexar(); S.rasc.apagado = true;
+  if (S.hist) S.hist.l.forEach(e => { if (e.id === ex.id) Object.assign(e, mud); });
+  if (S.rasc.exHist && S.rasc.exHist.id === ex.id) Object.assign(S.rasc.exHist, mud);
   render(); atualizarItem(); toast(gestor() && ex.concluida_por !== S.user.id ? 'Demanda reaberta' : 'Conclusão desfeita');
 }
 
@@ -902,8 +911,8 @@ function vHistorico() {
   else if (S.f.hmeu !== false) l = l.filter(e => e.concluida_por === S.user.id);
   S.histVis = l;
   if (!l.length) return html + vazio('hist', 'Nenhuma conclusão no período', 'As demandas concluídas aparecem aqui com fotos e observações.');
-  const comFoto = l.filter(e => (e.fotos || []).length).length, comObs = l.filter(e => e.observacao).length;
-  html += `<div class="stat"><div class="card"><b>${l.length}</b><span>concluídas</span></div><div class="card"><b>${comFoto}</b><span>com foto</span></div><div class="card"><b>${comObs}</b><span>com observação</span></div></div>`;
+  const ativas = l.filter(e => !e.reaberta_em), comFoto = ativas.filter(e => (e.fotos || []).length).length, comObs = ativas.filter(e => e.observacao).length;
+  html += `<div class="stat"><div class="card"><b>${ativas.length}</b><span>concluídas</span></div><div class="card"><b>${comFoto}</b><span>com foto</span></div><div class="card"><b>${comObs}</b><span>com observação</span></div></div>`;
   const dias = {};
   l.forEach(e => (dias[isoDe(e.concluida_em)] = dias[isoDe(e.concluida_em)] || []).push(e));
   for (const [d, es] of Object.entries(dias)) {
@@ -912,7 +921,7 @@ function vHistorico() {
       return `<button class="row" style="--ind:68px" onclick="${e._pend ? `abrirItem('${e.demanda_id}','${e.ref}')` : `abrirExec('${e.id}')`}">
         ${f ? `<span class="thumbs">${imgFoto(f)}</span>` : `<span class="chk ${e._pend ? 'wait' : 'ok'}" style="margin:0 7px">${ic('check', 'xs')}</span>`}
         <span class="grow"><div class="t1">${esc(e.titulo || (dm && dm.titulo) || 'Demanda')}</div>
-        <div class="t2">${dp ? `<span class="chip c" style="--c:${dp.cor}">${esc(dp.nome)}</span>` : ''}${esc(primeiroNome(nomeDe(e.concluida_por)))} · ${hora(e.concluida_em)}${(e.fotos || []).length > 1 ? ` · ${ic('foto', 'xs')} ${e.fotos.length}` : ''}</div>
+        <div class="t2">${e.reaberta_em ? '<span class="chip red">Reaberta</span>' : ''}${dp ? `<span class="chip c" style="--c:${dp.cor}">${esc(dp.nome)}</span>` : ''}${esc(primeiroNome(nomeDe(e.concluida_por)))} · ${hora(e.concluida_em)}${(e.fotos || []).length > 1 ? ` · ${ic('foto', 'xs')} ${e.fotos.length}` : ''}</div>
         ${e.observacao ? `<div class="t2" style="font-style:italic;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">“${esc(e.observacao)}”</div>` : ''}</span>
         <span class="chev">${ic('chev', 's')}</span></button>`;
     }).join('')}</div>`;
@@ -923,8 +932,8 @@ function exportarCSV() {
   const l = S.histVis || [];
   if (!l.length) return toast('Nada para exportar no período.');
   const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const linhas = [['Data', 'Hora', 'Demanda', 'Departamento', 'Tipo', 'Concluída por', 'Observação', 'Fotos'].map(q).join(';')];
-  l.forEach(e => { const dm = dem(e.demanda_id); linhas.push([fmtCurta(isoDe(e.concluida_em)) + '/' + isoDe(e.concluida_em).slice(0, 4), hora(e.concluida_em), e.titulo || (dm && dm.titulo), (dep(e.departamento_id) || {}).nome, e.ref === 'unica' ? 'Específica' : 'Diária', nomeDe(e.concluida_por), e.observacao, (e.fotos || []).length].map(q).join(';')); });
+  const linhas = [['Data', 'Hora', 'Demanda', 'Departamento', 'Tipo', 'Concluída por', 'Observação', 'Fotos', 'Situação'].map(q).join(';')];
+  l.forEach(e => { const dm = dem(e.demanda_id); linhas.push([fmtCurta(isoDe(e.concluida_em)) + '/' + isoDe(e.concluida_em).slice(0, 4), hora(e.concluida_em), e.titulo || (dm && dm.titulo), (dep(e.departamento_id) || {}).nome, e.ref === 'unica' ? 'Específica' : 'Diária', nomeDe(e.concluida_por), e.observacao, (e.fotos || []).length, e.reaberta_em ? 'Reaberta em ' + fmtDataHora(e.reaberta_em) : 'Concluída'].map(q).join(';')); });
   const [de, ate] = periodo();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' }));

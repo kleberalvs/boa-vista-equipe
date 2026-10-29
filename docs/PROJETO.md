@@ -82,3 +82,9 @@ No Supabase (Authentication → URL Configuration), o Site URL e as Redirect URL
 - Banco: `supabase/atualizacao-4-varios-departamentos.sql` (coluna `dm_demandas.departamentos uuid[]`; `departamento_id` continua como o principal). A `atualizacao-3-demandas.sql` já inclui a mesma mudança, então rodar a 3 de novo não desfaz a 4.
 - Fotos: reduzidas no celular para no máximo 1280 px e qualidade 70% antes do envio (antes 1600 px e 72%), cerca de 150–250 KB por foto.
 - Corrigido o botão "Exigir foto para concluir", que aparecia esticado.
+
+## Reabrir mantém as fotos (29/10/2026, versão 2026.10.29-8)
+- Reabrir (gestor) ou desfazer (colaborador, até 12 h) não apaga mais a conclusão: ela fica marcada como reaberta (`reaberta_em`, `reaberta_por`), a observação é apagada e as fotos ficam guardadas. A demanda volta a ficar pendente e pode ser concluída de novo.
+- A demanda mostra "Conclusões anteriores (reabertas)" com as fotos; o Histórico mostra a etiqueta "Reaberta" (não entra na contagem de concluídas); a planilha CSV ganhou a coluna "Situação".
+- Banco: `supabase/atualizacao-5-reabrir-mantem-fotos.sql` (colunas novas e índice único só para conclusões ativas). A `atualizacao-3-demandas.sql` já inclui a mesma mudança.
+- Também nesta versão: arrastar a janela para baixo fecha; concluir funciona na aba anônima do Safari.
