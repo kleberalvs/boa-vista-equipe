@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>Demandas · Boa Vista Corporate</title>
+<meta name="description" content="Demandas da equipe do Boa Vista Corporate: tarefas diárias e específicas, conclusão com fotos e feedbacks">
+<meta name="theme-color" content="#f2f2f7">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Demandas">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="app.css">
+<script src="../config.js"></script>
+</head>
+<body>
+<div id="splash"><div class="spin"></div></div>
+<div id="app"></div>
+<div id="veil" onclick="fecharFolha()"></div>
+<div id="sheet" class="sheet" role="dialog" aria-modal="true"></div>
+<div id="viewer" role="dialog" aria-label="Foto">
+  <img id="vimg" alt="">
+  <div class="cnt" id="vcnt"></div>
+  <button class="vb close" onclick="fecharFoto()" aria-label="Fechar"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <button class="vb prev" onclick="passarFoto(-1)" aria-label="Anterior"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <button class="vb next" onclick="passarFoto(1)" aria-label="Próxima"><svg class="i" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<input id="fotoIn" type="file" accept="image/*" multiple hidden>
+<script src="../vendor/supabase.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

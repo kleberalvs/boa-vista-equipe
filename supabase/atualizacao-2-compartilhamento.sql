@@ -1,4 +1,5 @@
 -- Boa Vista Corporate · Equipe
+-- ATENÇÃO: se você já rodou a atualizacao-3-demandas.sql e rodar este arquivo de novo, rode a atualizacao-3-demandas.sql em seguida (ela reaplica a proteção do painel).
 -- Atualização 2: links públicos de visualização (somente leitura, sem login).
 -- Execute UMA vez: Supabase > SQL Editor > New query > cole tudo > Run. Pode rodar de novo sem problema.
 

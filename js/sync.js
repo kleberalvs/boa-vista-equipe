@@ -3,7 +3,7 @@
    Cada aparelho envia só o que mudou e recebe só o que os outros mudaram. Em conflito, vale a última gravação. */
 const CFG = window.BVC_CFG || {};
 const CLOUD = !!(CFG.url && CFG.key && window.supabase);
-const APPV = '2026.10.28-14';
+const APPV = '2026.10.29-1';
 const REC = /type=recovery/.test(location.hash), RECERR = /error_code=|error=access_denied/.test(location.hash);
 let SB = null, SES = null, synced = {}, pushing = false, again = false, tmr = null, chan = null, DEF = null;
 try { synced = JSON.parse(localStorage.getItem('bvc_synced') || '{}'); } catch (e) { synced = {}; }
@@ -193,6 +193,8 @@ function modoOffline() {
   if (!retryT) retryT = setInterval(() => { if (SES) { clearInterval(retryT); retryT = null; } else start(); }, 15000);
 }
 async function enter(s) {
+  /* logins de colaboradores (app de Demandas) não usam o painel: vão direto para as demandas */
+  try { const r = await SB.rpc('dm_sem_painel'); if (!r.error && r.data === true) { location.replace('demandas/'); return; } } catch (e) {}
   SES = s; WHO = (s.user && s.user.email) || '';
   try { localStorage.setItem('bvc_who', WHO); } catch (e) {}
   unlock(); const l = $('#login'); if (l) l.remove();

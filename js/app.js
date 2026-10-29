@@ -28,7 +28,7 @@ function addTo(g,p){const a=ambList(p);(a.length?a:['Não definido']).forEach(x=
 function cntAmb(){const g={};db.p.forEach(p=>{const a=ambList(p);(a.length?a:['Não definido']).forEach(x=>g[x]=(g[x]||0)+1)});return g}
 let view='painel',S={q:'',amb:'',rep:'colab',folder:'geral',note:null};
 const NAV={painel:'Painel',equipe:'Equipe',escalas:'Escalas',ambientes:'Ambientes',ferias:'Férias',documentos:'Documentos',relatorios:'Relatórios',notas:'Anotações',historico:'Histórico'};
-$('#nav').innerHTML=Object.entries(NAV).map(([k,v])=>`<button data-v="${k}" onclick="go('${k}')">${v}</button>`).join('');
+$('#nav').innerHTML=Object.entries(NAV).map(([k,v])=>`<button data-v="${k}" onclick="go('${k}')">${v}</button>`).join('')+`<button data-v="demandas" onclick="location.href='demandas/'" title="Abrir as demandas da equipe">Demandas ↗</button>`;
 function go(v){view=v;history.replaceState(null,'','#'+v);render();window.scrollTo({top:0,behavior:'smooth'})}
 function render(q){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==view));const e=$('#main');e.innerHTML=V[view]();applyBrand();syncTab();if(!q){e.classList.remove('in');void e.offsetWidth;e.classList.add('in')}anim(e)}
 const bars=o=>{const mx=Math.max(1,...Object.values(o));return Object.entries(o).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="bar"><div><span>${esc(k)}</span><b>${v}</b></div><i><u data-w="${v/mx*100}%"></u></i></div>`).join('')};

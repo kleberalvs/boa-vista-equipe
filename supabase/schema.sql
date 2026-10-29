@@ -1,4 +1,5 @@
 -- Boa Vista Corporate · banco de dados na nuvem (Supabase)
+-- ATENÇÃO: se você já rodou a atualizacao-3-demandas.sql e rodar este arquivo de novo, rode a atualizacao-3-demandas.sql em seguida (ela reaplica a proteção do painel).
 -- Cole este arquivo inteiro em "SQL Editor" no Supabase e clique em Run. Pode executar uma vez só.
 
 create table if not exists public.records (

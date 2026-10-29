@@ -47,3 +47,25 @@ Mudanças no banco exigem rodar um arquivo SQL em `supabase/` (SQL Editor do Sup
 
 ## Testes feitos
 Servidor Supabase simulado + Chromium (Playwright) com dois aparelhos: login, sincronização em tempo real, exclusão/restauração, offline, tema, imagem/capa, criação/revogação de links, token inválido e neutralização de HTML malicioso. Não testado em iPhone/Safari reais.
+
+## Demandas (29/10/2026, versão 2026.10.29-1)
+Seção de demandas operacionais da equipe (limpeza, manutenção, recepção, TI…), dentro do mesmo site e do mesmo banco.
+
+- Endereço: https://kleberalvs.github.io/boa-vista-equipe/demandas/ (instala como app próprio no celular dos colaboradores)
+- No painel: menu **Demandas ↗** (computador) ou **Mais → Demandas da equipe** (celular). Mesma sessão: o proprietário entra uma vez só.
+- Nas Demandas, o proprietário volta pelo item **Painel da equipe ↗**.
+
+Quem vê o quê:
+- **Proprietário** (conta do painel, login por e-mail): tudo — painel inteiro + Demandas como gestor. A primeira conta do painel que abrir as Demandas vira gestora.
+- **Colaboradores** (criados dentro das Demandas, login só com usuário e senha, sem e-mail): apenas as demandas do(s) seu(s) departamento(s), conclusão com fotos, observações, conversa na demanda e feedbacks. Se abrirem o endereço do painel, são levados às Demandas. O banco bloqueia para eles as tabelas `records` e `shares` (regra no Supabase, não só na tela).
+- Gestores criados dentro das Demandas também não acessam o painel.
+
+Recursos: demandas diárias (dias da semana) e específicas (prazo), prioridade, local, horário, responsável opcional, foto obrigatória opcional; tela Hoje com progresso por departamento; histórico com fotos e exportação CSV; equipe e departamentos; feedbacks com resposta do gestor; funciona sem internet (envia as conclusões quando voltar).
+Ao criar um acesso, o gestor pode escolher a pessoa da lista **Equipe** do painel: preenche o nome e sugere o departamento pelo cargo.
+
+Banco: `supabase/atualizacao-3-demandas.sql` (rodar uma vez no SQL Editor; pode repetir). Tabelas `dm_*`, pasta de fotos `demandas-fotos` (privada), funções `dm_criar_usuario`, `dm_redefinir_senha`, `dm_definir_ativo`, `dm_bootstrap`, `dm_sem_painel`.
+Atenção: se rodar de novo `schema.sql` ou `atualizacao-2-compartilhamento.sql`, rode a `atualizacao-3-demandas.sql` em seguida (ela reaplica a proteção do painel).
+
+Fotos: comprimidas no aparelho antes do envio; ficam no Storage do Supabase (1 GB no plano gratuito).
+Arquivos: `demandas/index.html`, `demandas/app.js`, `demandas/app.css`, `demandas/sw.js` (cache próprio `bvc-demandas-*`), `demandas/manifest.webmanifest`, `demandas/icons/`.
+Testes: SQL e regras de acesso num Postgres local; navegador (Playwright) com painel + Demandas: login único do proprietário, criação de acesso a partir da equipe do painel, colaboradora no celular vê só as demandas e é redirecionada ao tentar abrir o painel, todas as abas do painel sem erros.
