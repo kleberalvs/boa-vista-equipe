@@ -3,7 +3,7 @@
    Cada aparelho envia só o que mudou e recebe só o que os outros mudaram. Em conflito, vale a última gravação. */
 const CFG = window.BVC_CFG || {};
 const CLOUD = !!(CFG.url && CFG.key && window.supabase);
-const APPV = '2026.10.29-2';
+const APPV = '2026.10.30-2';
 const REC = /type=recovery/.test(location.hash), RECERR = /error_code=|error=access_denied/.test(location.hash);
 let SB = null, SES = null, synced = {}, pushing = false, again = false, tmr = null, chan = null, DEF = null;
 try { synced = JSON.parse(localStorage.getItem('bvc_synced') || '{}'); } catch (e) { synced = {}; }
@@ -15,7 +15,7 @@ function cj(o) {
   if (Array.isArray(o)) return '[' + o.map(cj).join(',') + ']';
   return '{' + Object.keys(o).filter(k => o[k] !== undefined).sort().map(k => JSON.stringify(k) + ':' + cj(o[k])).join(',') + '}';
 }
-const cfgRec = () => ({ amb: db.amb, cg: db.cg || {}, v: db.v || 0, m3: db.m3 || 0, m4: db.m4 || 0 });
+const cfgRec = () => ({ amb: db.amb, cg: db.cg || {}, v: db.v || 0, m3: db.m3 || 0, m4: db.m4 || 0, avc: db.avc || null });
 function recs() {
   const m = {};
   db.p.forEach(p => m['p:' + p.id] = p);
@@ -24,11 +24,12 @@ function recs() {
   (db.log || []).forEach(e => m['l:' + e.id] = e);
   m['c:cfg'] = cfgRec();
   m['b:brand'] = db.brand || {};
+  Object.keys(db.av || {}).forEach(k => m['a:' + k] = db.av[k]);
   return m;
 }
 function getRec(k) {
   const id = k.slice(2), f = a => (a || []).find(x => x.id == id);
-  switch (k[0]) { case 'p': return f(db.p); case 'f': return f(db.n.f); case 'i': return f(db.n.i); case 'l': return f(db.log); case 'c': return cfgRec(); case 'b': return db.brand || {}; }
+  switch (k[0]) { case 'p': return f(db.p); case 'f': return f(db.n.f); case 'i': return f(db.n.i); case 'l': return f(db.log); case 'c': return cfgRec(); case 'b': return db.brand || {}; case 'a': return (db.av || {})[id]; }
 }
 const fsort = (a, b) => a.id == 'geral' ? -1 : b.id == 'geral' ? 1 : (a.t || 0) - (b.t || 0);
 function put(arr, x) { const o = arr.find(q => q.id == x.id); if (o) { Object.keys(o).forEach(k => delete o[k]); Object.assign(o, x); } else arr.push(x); }
@@ -37,12 +38,13 @@ function place(d, kind, x) {
   else if (kind == 'f') { put(d.n.f, x); d.n.f.sort(fsort); }
   else if (kind == 'i') put(d.n.i, x);
   else if (kind == 'l') { put(d.log, x); d.log.sort((a, b) => a.t - b.t); }
-  else if (kind == 'c') { d.amb = x.amb || []; d.cg = x.cg || {}; if (x.v) d.v = x.v; d.m3 = x.m3 || 0; d.m4 = x.m4 || 0; }
+  else if (kind == 'c') { d.amb = x.amb || []; d.cg = x.cg || {}; if (x.v) d.v = x.v; d.m3 = x.m3 || 0; d.m4 = x.m4 || 0; d.avc = x.avc || null; }
+  else if (kind == 'a') { d.av = d.av || {}; d.av[x.m] = x; }
   else if (kind == 'b') d.brand = x || {};
 }
 function drop(d, kind, id) {
   const f = a => a.filter(q => q.id != id);
-  if (kind == 'p') d.p = f(d.p); else if (kind == 'f') d.n.f = f(d.n.f); else if (kind == 'i') d.n.i = f(d.n.i); else if (kind == 'l') d.log = f(d.log);
+  if (kind == 'p') d.p = f(d.p); else if (kind == 'f') d.n.f = f(d.n.f); else if (kind == 'i') d.n.i = f(d.n.i); else if (kind == 'l') d.log = f(d.log); else if (kind == 'a' && d.av) delete d.av[id];
 }
 
 /* indicador no topo */
@@ -120,7 +122,7 @@ async function pull() {
   let first = !Object.keys(synced).length;
   if (!rows.length && !first) { synced = {}; first = true; }   /* nuvem esvaziada por fora: sobe de novo o que existe aqui */
   if (first && rows.length && (!db.p.length || confirm('A nuvem já tem dados. Substituir os dados deste aparelho pelos da nuvem?'))) {
-    const n = { v: 0, amb: [], cg: {}, p: [], n: { f: [], i: [] }, log: [], brand: {} };
+    const n = { v: 0, amb: [], cg: {}, p: [], n: { f: [], i: [] }, log: [], brand: {}, av: {} };
     rows.forEach(r => place(n, r.kind, r.data));
     if (!n.n.f.some(f => f.id == 'geral')) n.n.f.unshift({ id: 'geral', name: 'Geral', par: null });
     db = mig(n); synced = {};

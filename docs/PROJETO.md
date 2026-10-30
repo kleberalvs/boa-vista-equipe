@@ -20,6 +20,8 @@ Novidades de 27/10/2026 (versão 2026.10.27-2):
 
 Celular (28/10/2026): barra de navegação fixa embaixo (Painel, Equipe, Escalas, Ambientes, Mais), cabeçalho compacto com ícones, Escalas e Férias em cartões, folhas inferiores para janelas, barra de status offline, travas contra zoom e transições suaves entre páginas.
 
+Destaque do mês (30/10/2026): menu com avaliação mensal de 0,0 a 5,0 em 5 critérios editáveis (padrão: Qualidade do serviço, Cumprimento do horário, Iniciativa e proatividade, Trabalho em equipe, Zelo e organização). Média dos 5 + nota especial (0,0 a 1,0) = nota final; ranking com empate, destaque do mês, visão anual (destaque de cada mês, mais vezes destaque, maior média). Dados em registros do tipo `a` (um por mês), sincronizados e registrados no Histórico.
+
 ## Arquitetura
 - Scripts clássicos em ordem: `timbrado.js` → `docx.js` → `extras.js` → `app.js` → `sync.js`.
 - `db` = {p, amb, cg, n:{f,i}, log, brand, v, m3, m4}; salvo em `localStorage` (`bvc_db`) e sincronizado.

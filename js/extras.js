@@ -18,7 +18,7 @@ const TABS = [
   ['escalas', 'Escalas', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'],
   ['ambientes', 'Ambientes', '<path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 9h2a2 2 0 0 1 2 2v10"/><path d="M8 7h4M8 11h4M8 15h4M2 21h20"/>']
 ];
-const MAIS = ['ferias', 'documentos', 'relatorios', 'notas', 'historico'];
+const MAIS = ['ferias', 'avaliacao', 'documentos', 'relatorios', 'notas', 'historico'];
 function buildTabbar() {
   const t = $('#tabbar'); if (!t) return;
   t.innerHTML = TABS.map(([v, n, d]) => `<button data-v="${v}" onclick="go('${v}')">${SVG(d, 24)}<span>${n}</span></button>`).join('') + `<button data-v="mais" onclick="menuMais()"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg><span>Mais</span></button>`;
@@ -142,7 +142,7 @@ function menuImagem(tipo) {
 const opAparencia = () => `<h2 style="margin-top:20px">Aparência</h2><div class="seg" role="group" aria-label="Tema">${[['light', 'Claro'], ['dark', 'Escuro'], ['auto', 'Automático']].map(([k, v]) => `<button data-t="${k}" class="${themePref() == k ? 'on' : ''}" onclick="setTheme('${k}')">${v}</button>`).join('')}</div><small style="display:block;margin-top:6px">O tema vale só para este aparelho.</small><div class="tools" style="margin-top:14px"><button class="b s" onclick="menuImagem('logo')">Imagem da empresa</button><button class="b s" onclick="menuImagem('capa')">Capa</button></div>`;
 
 /* ---------- link público de visualização ---------- */
-const SHAREABLE = { painel: 'Painel', equipe: 'Equipe', escalas: 'Escalas', ambientes: 'Ambientes', ferias: 'Férias', relatorios: 'Relatórios' };
+const SHAREABLE = { painel: 'Painel', equipe: 'Equipe', escalas: 'Escalas', ambientes: 'Ambientes', ferias: 'Férias', avaliacao: 'Destaque do mês', relatorios: 'Relatórios' };
 const fdh = t => new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 const linkDe = t => location.origin + location.pathname + '#v=' + t;
 function novoToken() {
