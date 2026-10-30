@@ -98,3 +98,9 @@ No Supabase (Authentication → URL Configuration), o Site URL e as Redirect URL
 - Banco: `supabase/atualizacao-6-notificacoes.sql`. Endereço da função e senha de chamada ficam em `dm_config` (gravados à parte, fora do GitHub).
 - Função: `supabase/functions/notificar/index.ts`, publicada pelo painel do Supabase (Edge Functions), com "Verify JWT" desligado. Segredos da função: `VAPID_PUBLIC`, `VAPID_PRIVATE`, `DM_SEGREDO` (nunca no GitHub). A chave pública VAPID também está em `demandas/app.js`.
 - Se uma notificação falhar, a conclusão/feedback é salva do mesmo jeito.
+
+## Destaque do mês: painel e relatórios (2026.10.30-4)
+- Aba Mês: destaque, cartões (média da equipe e variação, avaliações completas, maior nota, ponto forte), média por critério, distribuição das notas, evolução de 6 meses, insights automáticos, ranking e pendências.
+- Aba Ano: resumo, evolução mensal, destaque de cada mês, mapa de notas (calor) e classificação anual.
+- Editor da pessoa mostra os últimos 6 meses dela.
+- Relatórios novos (Word, PDF, TXT): `dm` notas de todos no mês, `da` destaque do ano, `dh` histórico de destaques. Seletor de mês/ano aparece ao escolher o relatório. Código em `js/avaliacao.js` (`avRel`, `avParam`).

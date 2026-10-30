@@ -178,3 +178,14 @@ button,.click,.fo,.pick{-webkit-user-select:none;user-select:none}
 .avs{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:10px;margin-top:14px;text-align:center}.avs>div{background:var(--seg);border-radius:14px;padding:10px 6px}.avs small{display:block;color:var(--mut)}.avs b{font-size:20px;font-variant-numeric:tabular-nums}.avs .fin{background:var(--gl)}.avs .fin b{color:var(--g);font-size:24px}
 @media(max-width:720px){.mn b{min-width:0;flex:1}.mn{flex:1 1 100%;order:3}.av-win{padding:18px}.av-win .big{font-size:40px}.avi input[type=number]{width:76px}}
 :root[data-theme=dark] #splash{background:#000}
+
+/* Destaque do mês: análises */
+.dl{font-size:12px;font-weight:600;white-space:nowrap}.dl.up{color:#248a3d}.dl.dn{color:var(--c-r)}
+:root[data-theme=dark] .dl.up{color:#30d158}
+.ins{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);font-size:14.5px}.ins:first-of-type{border-top:0}
+.ins i{width:9px;height:9px;border-radius:50%;background:var(--g);flex:none;margin-top:7px}.ins.up i{background:#34c759}.ins.dn i{background:#ff9f0a}
+.avc6{height:190px}.avc6.av12 .col b{font-size:11px}
+.av-none .tr2{width:54px;height:54px;border-radius:18px;background:var(--gl);color:var(--g);display:grid;place-items:center;margin:0 auto 10px}
+.como{text-align:left;max-width:460px;margin:14px auto 0;padding-left:22px;line-height:1.8;font-size:14px}
+.hm{border-collapse:separate;border-spacing:3px;width:auto}.hm th{font-weight:500;color:var(--mut);font-size:12px;padding:4px;border:0;text-align:center;white-space:nowrap}.hm th.nm0{text-align:left;position:sticky;left:0;background:var(--card);color:var(--ink);font-size:13px;padding-right:10px;z-index:1}
+.hm td{border:0;text-align:center;border-radius:8px;padding:9px 4px;min-width:44px;font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--ink)}.hm td.hi{color:#fff}.hm td.e{color:var(--mut);background:none}.hm td.w{box-shadow:0 0 0 2px #f5c542;font-weight:700}.hm td.av2{font-weight:700;background:none;font-size:13px;min-width:54px}
