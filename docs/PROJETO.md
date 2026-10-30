@@ -104,3 +104,9 @@ No Supabase (Authentication → URL Configuration), o Site URL e as Redirect URL
 - Aba Ano: resumo, evolução mensal, destaque de cada mês, mapa de notas (calor) e classificação anual.
 - Editor da pessoa mostra os últimos 6 meses dela.
 - Relatórios novos (Word, PDF, TXT): `dm` notas de todos no mês, `da` destaque do ano, `dh` histórico de destaques. Seletor de mês/ano aparece ao escolher o relatório. Código em `js/avaliacao.js` (`avRel`, `avParam`).
+
+## Destaque por departamento (2026.10.30-5)
+- Usa o campo **Departamento** do cadastro do colaborador. Na aba Destaque do mês há uma barra de departamentos (Todos + cada um, com a quantidade); ao escolher um, destaque, ranking, insights, aba Ano e "Salvar e próximo" passam a valer só para aquele departamento. A escolha fica lembrada no aparelho.
+- Em "Todos" aparece o cartão "Destaque por departamento" (vencedor de cada área no mês).
+- Os 3 relatórios têm seletor de departamento; o relatório do mês geral traz a tabela de destaque por departamento.
+- As notas são por pessoa, então trocar o departamento no cadastro não perde avaliações.

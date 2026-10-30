@@ -5,7 +5,11 @@ const CR_DEF = ['Qualidade do serviço', 'Cumprimento do horário', 'Iniciativa 
 const CR_DESC = ['Acabamento, atenção aos detalhes e pouco retrabalho', 'Pontualidade, assiduidade e cumprimento da escala', 'Resolve sem precisar pedir e sugere melhorias', 'Colaboração com colegas, clientes e condôminos', 'Cuidado com o patrimônio, uniforme e organização'];
 const TROFEU = '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>';
 function mesAtual() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
-const avS = { m: mesAtual(), tab: 'mes', y: new Date().getFullYear() };
+const avS = { m: mesAtual(), tab: 'mes', y: new Date().getFullYear(), d: (() => { try { return localStorage.getItem('bv_avd') || ''; } catch (e) { return ''; } })() };
+const deptoDe = p => (p.depto || '').trim() || 'Sem departamento';
+function deptos() { const c = {}; db.p.forEach(p => { const d = deptoDe(p); c[d] = (c[d] || 0) + 1; }); return Object.entries(c).sort((a, b) => (a[0] == 'Sem departamento') - (b[0] == 'Sem departamento') || a[0].localeCompare(b[0], 'pt-BR')).map(([n, q]) => ({ n, q })); }
+const dsuf = () => avS.d ? ' · ' + avS.d : '';
+function avDep(i) { avS.d = i < 0 ? '' : (deptos()[i] || { n: '' }).n; try { localStorage.setItem('bv_avd', avS.d); } catch (e) { } render(1); }
 const r2 = x => Math.round(x * 100) / 100;
 const f2 = x => x == null ? '—' : r2(x).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const f1 = x => x == null ? '—' : (Math.round(x * 10) / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -14,15 +18,15 @@ function mesCurto(m) { const s = new Date(+m.slice(0, 4), +m.slice(5) - 1, 1).to
 function addM(m, k) { const d = new Date(+m.slice(0, 4), +m.slice(5) - 1 + k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 const crit = () => (db.avc && db.avc.length == 5 ? db.avc : CR_DEF);
 const avMes = m => ((db.av || {})[m] || {}).s || {};
-const elegiveis = m => db.p.filter(p => !p.adm || p.adm.slice(0, 7) <= m);
+const elegiveis = (m, d = avS.d) => db.p.filter(p => (!p.adm || p.adm.slice(0, 7) <= m) && (!d || deptoDe(p) == d));
 function avCalc(e) {
   if (!e) return null;
   const n = (e.n || []).slice(0, 5), f = n.filter(x => typeof x == 'number').length, full = f == 5, b = +e.b || 0;
   const med = full ? n.reduce((a, c) => a + c, 0) / 5 : null;
   return { f, full, med, b, fin: full ? med + b : null, n };
 }
-function avRank(m) {
-  const s = avMes(m), rows = elegiveis(m).map(p => ({ p, e: s[p.id], c: avCalc(s[p.id]) }));
+function avRank(m, d = avS.d) {
+  const s = avMes(m), rows = elegiveis(m, d).map(p => ({ p, e: s[p.id], c: avCalc(s[p.id]) }));
   const ok = rows.filter(r => r.c && r.c.full).sort((a, b) => r2(b.c.fin) - r2(a.c.fin) || r2(b.c.med) - r2(a.c.med) || a.p.nome.localeCompare(b.p.nome, 'pt-BR'));
   let pos = 0, prev = null;
   ok.forEach((r, i) => { const k = r2(r.c.fin) + '|' + r2(r.c.med); if (k !== prev) { pos = i + 1; prev = k; } r.pos = pos; });
@@ -45,8 +49,13 @@ function avGo(k) {
 }
 function avTab(t) { avS.tab = t; if (t == 'mes' && avS.m.slice(0, 4) != String(avS.y)) avS.m = avS.y == new Date().getFullYear() ? mesAtual() : avS.y + '-12'; render(1); }
 
+function avDeptBar() {
+  const L = deptos(); if (L.length < 2) return '';
+  return `<div class="dpt" role="group" aria-label="Departamento"><button class="${avS.d ? '' : 'on'}" onclick="avDep(-1)">Todos <i>${db.p.length}</i></button>${L.map((x, i) => `<button class="${avS.d == x.n ? 'on' : ''}" onclick="avDep(${i})">${esc(x.n)} <i>${x.q}</i></button>`).join('')}</div>`;
+}
 function avView() {
-  return `<h1>Destaque do mês</h1><p class="sub">Notas de 0,0 a 5,0 em 5 critérios. A média, somada à nota especial, define o ranking e o destaque de cada mês.</p>${avBarra()}${avS.tab == 'mes' ? avMesHtml() : avAnoHtml()}`;
+  if (avS.d && !deptos().some(x => x.n == avS.d)) avS.d = '';
+  return `<h1>Destaque do mês</h1><p class="sub">Notas de 0,0 a 5,0 em 5 critérios. A média, somada à nota especial, define o ranking e o destaque de cada mês.</p>${avBarra()}${avDeptBar()}${avS.tab == 'mes' ? avMesHtml() : avAnoHtml()}`;
 }
 /* ---- análises ---- */
 const mediaEq = R => R.ok.length ? R.ok.reduce((a, r) => a + r.c.fin, 0) / R.ok.length : null;
@@ -97,16 +106,25 @@ function avMesHtml() {
   let hero;
   if (w.length) {
     const un = w.length == 1 ? w[0] : null;
-    hero = `<div class="av-win"><div class="tr">${TROFEU}</div><div class="wt"><small>Destaque de ${mesNome(m)}${w.length > 1 ? ' · empate' : ''}</small><h2>${w.map(r => esc(r.p.nome)).join(' e ')}</h2>${un ? `<small>${esc(un.p.cargo || '')}</small>` : ''}</div><div class="big">${f2(w[0].c.fin)}</div>${un ? `<div class="wb">${cs.map((c, i) => `<div><span>${esc(c)}</span><i><u data-w="${un.c.n[i] / 5 * 100}%"></u></i><b>${f1(un.c.n[i])}</b></div>`).join('')}${un.c.b ? `<div><span>Nota especial</span><i><u data-w="${un.c.b / AV_MAX * 100}%"></u></i><b>+${f1(un.c.b)}</b></div>` : ''}</div>` : ''}</div>`;
-  } else hero = `<div class="card av-none"><div class="tr2">${TROFEU}</div><b>Nenhum destaque em ${mesNome(m)} ainda</b><br><small>Quando você avaliar os 5 critérios de pelo menos um colaborador, o destaque, o ranking e as análises aparecem aqui.</small><ol class="como"><li>Toque num colaborador em <b>Falta avaliar</b>.</li><li>Dê notas de 0,0 a 5,0 nos 5 critérios (e, se quiser, uma nota especial).</li><li>Use <b>Salvar e próximo</b> para avaliar todos em sequência.</li></ol></div>`;
+    hero = `<div class="av-win"><div class="tr">${TROFEU}</div><div class="wt"><small>Destaque de ${mesNome(m)}${dsuf()}${w.length > 1 ? ' · empate' : ''}</small><h2>${w.map(r => esc(r.p.nome)).join(' e ')}</h2>${un ? `<small>${esc(un.p.cargo || '')}</small>` : ''}</div><div class="big">${f2(w[0].c.fin)}</div>${un ? `<div class="wb">${cs.map((c, i) => `<div><span>${esc(c)}</span><i><u data-w="${un.c.n[i] / 5 * 100}%"></u></i><b>${f1(un.c.n[i])}</b></div>`).join('')}${un.c.b ? `<div><span>Nota especial</span><i><u data-w="${un.c.b / AV_MAX * 100}%"></u></i><b>+${f1(un.c.b)}</b></div>` : ''}</div>` : ''}</div>`;
+  } else hero = `<div class="card av-none"><div class="tr2">${TROFEU}</div><b>Nenhum destaque em ${mesNome(m)}${avS.d ? ' (' + esc(avS.d) + ')' : ''} ainda</b><br><small>Quando você avaliar os 5 critérios de pelo menos um colaborador, o destaque, o ranking e as análises aparecem aqui.</small><ol class="como"><li>Toque num colaborador em <b>Falta avaliar</b>.</li><li>Dê notas de 0,0 a 5,0 nos 5 critérios (e, se quiser, uma nota especial).</li><li>Use <b>Salvar e próximo</b> para avaliar todos em sequência.</li></ol></div>`;
   const tiles = R.ok.length ? `<div class="grid g4" style="margin-top:16px">${tile('Média da equipe', f2(mediaA), setaDelta(mediaP == null ? null : mediaA - mediaP) + (mediaP == null ? '' : ' vs mês anterior'))}${tile('Avaliações completas', R.ok.length + ' de ' + R.total, Math.round(R.ok.length / R.total * 100) + '% concluído')}${tile('Maior nota', f2(R.ok[0].c.fin), esc(R.ok[0].p.nome.split(' ')[0]))}${tile('Ponto forte', esc([...pc].sort((a, b) => b.v - a.v)[0].nome), 'média ' + f2([...pc].sort((a, b) => b.v - a.v)[0].v))}</div>` : `<div class="card" style="margin-top:16px"><div class="bar" style="margin:0"><div><span>Avaliações completas</span><b>0 de ${R.total}</b></div><i><u data-w="0%"></u></i></div></div>`;
   const graf = R.ok.length ? `<div class="grid g2" style="margin-top:16px"><div class="card"><h2>Média por critério</h2>${pc.map(x => `<div class="bar"><div><span>${esc(x.nome)}</span><b>${f2(x.v)}</b></div><i><u data-w="${x.v / 5 * 100}%"></u></i></div>`).join('')}</div><div class="card"><h2>Distribuição das notas</h2>${avDistrib(R)}</div></div><div class="card" style="margin-top:16px"><h2>Evolução da média da equipe</h2><p class="sub" style="margin:0 0 6px;font-size:13px">Últimos 6 meses</p>${avEvolucao(m, 6)}</div>` : '';
   const ins = avInsights(m);
   const insH = ins.length ? `<div class="card" style="margin-top:16px"><h2>Insights</h2>${ins.map(([c, t]) => `<div class="ins ${c}"><i></i><span>${t}</span></div>`).join('')}</div>` : '';
-  const rank = R.ok.length ? `<h2 style="margin:24px 0 10px">Ranking de ${mesNome(m)}</h2><div class="card">${R.ok.map(r => `<div class="row click" onclick="avEdit('${r.p.id}')"><span class="pos p${Math.min(r.pos, 4)}">${r.pos}</span><div class="t"><b>${esc(r.p.nome)}</b><br><small>Média ${f2(r.c.med)}${r.c.b ? ' + especial ' + f2(r.c.b) : ''} · ${esc(r.p.cargo || '')}</small></div><b class="sc">${f2(r.c.fin)}</b></div>`).join('')}</div>` : '';
+  const rank = R.ok.length ? `<h2 style="margin:24px 0 10px">Ranking de ${mesNome(m)}${avS.d ? ' · ' + esc(avS.d) : ''}</h2><div class="card">${R.ok.map(r => `<div class="row click" onclick="avEdit('${r.p.id}')"><span class="pos p${Math.min(r.pos, 4)}">${r.pos}</span><div class="t"><b>${esc(r.p.nome)}</b><br><small>Média ${f2(r.c.med)}${r.c.b ? ' + especial ' + f2(r.c.b) : ''} · ${esc(r.p.cargo || '')}</small></div><b class="sc">${f2(r.c.fin)}</b></div>`).join('')}</div>` : '';
   const falta = R.falta.length ? `<h2 style="margin:24px 0 10px">Falta avaliar</h2><div class="card">${R.falta.map(r => `<div class="row click" onclick="avEdit('${r.p.id}')"><div class="av">${ini(r.p)}</div><div class="t"><b>${esc(r.p.nome)}</b><br><small>${r.c && r.c.f ? r.c.f + ' de 5 critérios' : 'Sem avaliação'}</small></div><span class="chip ${r.c && r.c.f ? 'o' : ''}">${r.c && r.c.f ? 'Incompleta' : 'Avaliar'}</span></div>`).join('')}</div>` : '';
+  const dep = avPorDeptoHtml(m);
   const rel = `<div class="tools" style="margin-top:20px"><button class="b s" onclick="avRelat('dm')">Relatório do mês</button><button class="b s" onclick="avRelat('da')">Relatório do ano</button><button class="b s" onclick="avRelat('dh')">Histórico de destaques</button></div>`;
-  return hero + tiles + graf + insH + rank + falta + rel;
+  return hero + dep + tiles + graf + insH + rank + falta + rel;
+}
+function avPorDepto(m) {
+  return deptos().map(x => { const R = avRank(m, x.n); return { n: x.n, R, w: R.ok.filter(r => r.pos == 1) }; });
+}
+function avPorDeptoHtml(m) {
+  if (avS.d || deptos().length < 2) return '';
+  const L = avPorDepto(m); const idx = n => deptos().findIndex(x => x.n == n);
+  return `<h2 style="margin:24px 0 10px">Destaque por departamento</h2><div class="card">${L.map(x => `<div class="row click" onclick="avDep(${idx(x.n)})"><div class="av">${TROFEU.replace(/width="\d+"/, 'width="18"').replace(/height="\d+"/, 'height="18"')}</div><div class="t"><b>${esc(x.n)}</b><br><small>${x.w.length ? esc(x.w.map(r => r.p.nome).join(' e ')) + ' · ' + f2(x.w[0].c.fin) : 'Sem destaque ainda'}</small></div><span class="chip ${x.R.ok.length == x.R.total ? 'g' : ''}">${x.R.ok.length} de ${x.R.total}</span></div>`).join('')}</div>`;
 }
 function avRelat(k) { S.rep = k; avS.y = +avS.m.slice(0, 4); go('relatorios'); }
 function avAnoHtml() {
@@ -120,7 +138,7 @@ function avAnoHtml() {
     linhas.push(`<div class="row click" onclick="avS.m='${m}';avS.tab='mes';render(1)"><div class="mo">${mesCurto(m)}</div><div class="t">${w.length ? `<b>${w.map(r => esc(r.p.nome)).join(' e ')}</b><br><small>${f2(w[0].c.fin)}${w.length > 1 ? ' · empate' : ''} · ${R.ok.length} avaliado${R.ok.length == 1 ? '' : 's'}</small>` : '<span style="color:var(--mut)">Sem destaque</span>'}</div>${w.length ? '<span class="chip g">Destaque</span>' : ''}</div>`);
   }
   const L = Object.values(tot).map(t => { const v = Object.values(t.fin); return { ...t, n: v.length, med: v.reduce((a, b) => a + b, 0) / v.length, best: Math.max(...v) }; });
-  if (!L.length) return `<div class="card av-none"><div class="tr2">${TROFEU}</div><b>Sem avaliações em ${y}</b><br><small>Avalie os colaboradores na aba Mês para ver o resumo do ano.</small></div>`;
+  if (!L.length) return `<div class="card av-none"><div class="tr2">${TROFEU}</div><b>Sem avaliações em ${y}${avS.d ? ' (' + esc(avS.d) + ')' : ''}</b><br><small>Avalie os colaboradores na aba Mês para ver o resumo do ano.</small></div>`;
   const porVit = [...L].sort((a, b) => b.vit - a.vit || b.med - a.med)[0], porMed = [...L].sort((a, b) => r2(b.med) - r2(a.med) || b.n - a.n)[0];
   const comDest = meses.filter(m => avRank(m).ok.length).length, mAno = medias.filter(x => x != null), mediaAno = mAno.length ? mAno.reduce((a, b) => a + b, 0) / mAno.length : null;
   const melhorMes = meses.map((m, i) => ({ m, v: medias[i] })).filter(x => x.v != null).sort((a, b) => b.v - a.v)[0];
@@ -193,18 +211,19 @@ function avRel() {
   return {
     dm() {
       const m = avS.m, R = avRank(m), w = R.ok.filter(r => r.pos == 1), mEq = mediaEq(R);
-      const topo = hd('DESTAQUE DO MÊS · ' + mesNome(m).toUpperCase());
+      const topo = hd('DESTAQUE DO MÊS · ' + mesNome(m).toUpperCase()); topo[1][1].push('**Departamento:** ' + (avS.d || 'Todos'));
       topo[1][1].push('**Avaliações completas:** ' + R.ok.length + ' de ' + R.total, ...(mEq != null ? ['**Média da equipe:** ' + f2(mEq)] : []));
       if (!R.ok.length) return [...topo, ['p', 'Nenhuma avaliação completa lançada neste mês.']];
       topo[1][1].unshift('**Destaque do mês:** ' + w.map(r => nm(r.p)).join(' e ') + ' (nota final ' + f2(w[0].c.fin) + ')' + (w.length > 1 ? ' – empate' : ''));
       const obs = R.ok.filter(r => r.e && r.e.t);
       return [...topo, ['h2', 'Notas de todos (ordem de classificação)'],
         ['tbl', ['Pos.', 'Colaborador', ...cs, 'Média', 'Especial', 'Final'], R.ok.map(r => [r.pos + 'º', nm(r.p), ...r.c.n.map(f1), f2(r.c.med), r.c.b ? '+' + f2(r.c.b) : '—', '**' + f2(r.c.fin) + '**']), [480, 1900, 790, 790, 790, 790, 790, 760, 760, 790], { sz: 15 }],
+        ...(!avS.d && deptos().length > 1 ? [['h2', 'Destaque por departamento'], ['tbl', ['Departamento', 'Destaque', 'Nota final', 'Avaliados'], avPorDepto(m).map(x => [x.n, x.w.length ? x.w.map(r => nm(r.p)).join(' e ') : '—', x.w.length ? f2(x.w[0].c.fin) : '—', x.R.ok.length + ' de ' + x.R.total]), [2400, 4000, 1200, 2040], { sz: 17 }]] : []),
         ...(R.falta.length ? [['h2', 'Sem avaliação completa'], ['p', R.falta.map(r => nm(r.p) + (r.c && r.c.f ? ' (' + r.c.f + ' de 5)' : '')).join('; ') + '.']] : []),
         ...(obs.length ? [['h2', 'Observações'], ['ul', obs.map(r => '**' + nm(r.p) + ':** ' + r.e.t)]] : [])];
     },
     da() {
-      const y = avS.y, hoje = mesAtual(), meses = [], tot = {}, topo = hd('DESTAQUE DO ANO · ' + y);
+      const y = avS.y, hoje = mesAtual(), meses = [], tot = {}, topo = hd('DESTAQUE DO ANO · ' + y); topo[1][1].push('**Departamento:** ' + (avS.d || 'Todos'));
       const linhas = [];
       for (let k = 1; k <= 12; k++) {
         const m = y + '-' + String(k).padStart(2, '0'); if (m > hoje) break;
@@ -219,7 +238,7 @@ function avRel() {
         ['h2', 'Classificação do ano'], ['tbl', ['Pos.', 'Colaborador', 'Destaques', 'Meses avaliados', 'Média anual', 'Melhor nota'], L.map((t, i) => [(i + 1) + 'º', nm(t.p), String(t.vit), String(t.fin.length), '**' + f2(t.med) + '**', f2(t.best)]), [600, 3300, 1100, 1700, 1500, 1440], { sz: 17 }]];
     },
     dh() {
-      const hoje = mesAtual(), topo = hd('HISTÓRICO DE DESTAQUES DO MÊS'), linhas = [];
+      const hoje = mesAtual(), topo = hd('HISTÓRICO DE DESTAQUES DO MÊS'), linhas = []; topo[1][1].push('**Departamento:** ' + (avS.d || 'Todos'));
       const ms = Object.keys(db.av || {}).filter(m => m <= hoje && avRank(m).ok.length).sort().reverse();
       ms.forEach(m => { const R = avRank(m), w = R.ok.filter(r => r.pos == 1), seg = R.ok.filter(r => r.pos > 1).slice(0, 2); linhas.push([mesNome(m), w.map(r => nm(r.p)).join(' e ') + (w.length > 1 ? ' (empate)' : ''), f2(w[0].c.fin), seg.map(r => nm(r.p) + ' (' + f2(r.c.fin) + ')').join('\n') || '—']); });
       if (!linhas.length) return [...topo, ['p', 'Nenhuma avaliação completa lançada até agora.']];
@@ -230,7 +249,12 @@ function avRel() {
     }
   };
 }
+function avDepSel() { const L = deptos(); if (L.length < 2) return ''; return `<select onchange="avS.d=this.value;try{localStorage.setItem('bv_avd',avS.d)}catch(e){}render(1)" aria-label="Departamento do relatório"><option value="">Todos os departamentos</option>${L.map(x => `<option ${avS.d == x.n ? 'selected' : ''}>${esc(x.n)}</option>`).join('')}</select>`; }
 function avParam() {
+  const d = ['dm', 'da', 'dh'].includes(S.rep) ? avDepSel() : '';
+  return d + avParam2();
+}
+function avParam2() {
   if (S.rep == 'dm') return `<input type="month" max="${mesAtual()}" value="${avS.m}" onchange="if(this.value){avS.m=this.value;avS.y=+this.value.slice(0,4);render(1)}" aria-label="Mês do relatório">`;
   if (S.rep == 'da') { const ys = new Set([new Date().getFullYear(), avS.y]); Object.keys(db.av || {}).forEach(m => ys.add(+m.slice(0, 4))); return `<select onchange="avS.y=+this.value;render(1)" aria-label="Ano do relatório">${[...ys].sort((a, b) => b - a).map(y => `<option ${y == avS.y ? 'selected' : ''}>${y}</option>`).join('')}</select>`; }
   return '';
